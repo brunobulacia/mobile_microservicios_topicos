@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../domain/either.dart';
@@ -38,13 +39,16 @@ class AuthenticationRepositoryImpl implements AuthenticationRepository {
   ) async {
     try {
       final response = await _authenticationApi.signIn(registro, password);
-      
+
       final accessToken = response['access_token'] as String;
       final user = User.fromJson(response);
 
       // Guardar el token y los datos del usuario
       await _secureStorage.write(key: _tokenKey, value: accessToken);
-      await _secureStorage.write(key: _userKey, value: jsonEncode(user.toJson()));
+      await _secureStorage.write(
+        key: _userKey,
+        value: jsonEncode(user.toJson()),
+      );
 
       return Either.right(user);
     } catch (e) {

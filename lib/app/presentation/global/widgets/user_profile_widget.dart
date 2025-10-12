@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../blocs/auth/auth_bloc.dart';
-import '../blocs/auth/auth_state.dart';
+
+import '../../blocs/auth/auth_bloc.dart';
+import '../../blocs/auth/auth_state.dart';
 
 class UserProfileWidget extends StatelessWidget {
   const UserProfileWidget({super.key});
@@ -24,7 +25,10 @@ class UserProfileWidget extends StatelessWidget {
                     style: Theme.of(context).textTheme.headlineSmall,
                   ),
                   const SizedBox(height: 16),
-                  _buildInfoRow('Nombre', '${user.nombre} ${user.apellidoPaterno} ${user.apellidoMaterno}'),
+                  _buildInfoRow(
+                    'Nombre',
+                    '${user.nombre} ${user.apellidoPaterno} ${user.apellidoMaterno}',
+                  ),
                   _buildInfoRow('Email', user.email),
                   _buildInfoRow('Matrícula', user.matricula),
                   _buildInfoRow('CI', user.ci),
@@ -37,8 +41,8 @@ class UserProfileWidget extends StatelessWidget {
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                     const SizedBox(height: 8),
-                    ...user.maestroDeOferta.map((maestro) => 
-                      Padding(
+                    ...user.maestroDeOferta.map(
+                      (maestro) => Padding(
                         padding: const EdgeInsets.only(left: 16),
                         child: Text('• ID: ${maestro.id}'),
                       ),
@@ -51,9 +55,7 @@ class UserProfileWidget extends StatelessWidget {
         } else if (state is AuthLoading) {
           return const Center(child: CircularProgressIndicator());
         } else {
-          return const Center(
-            child: Text('No hay usuario autenticado'),
-          );
+          return const Center(child: Text('No hay usuario autenticado'));
         }
       },
     );

@@ -51,7 +51,7 @@ class _SplashViewState extends State<SplashView> {
       body: BlocListener<AuthBloc, AuthState>(
         listener: (context, state) {
           if (state is AuthAuthenticated) {
-            _goTo(Routes.home);
+            _goTo(Routes.grupoMateria);
           } else if (state is AuthUnauthenticated || state is AuthError) {
             _goTo(Routes.signIn);
           }
@@ -66,10 +66,7 @@ class _SplashViewState extends State<SplashView> {
                 child: CircularProgressIndicator(),
               ),
               SizedBox(height: 20),
-              Text(
-                'Cargando...',
-                style: TextStyle(fontSize: 16),
-              ),
+              Text('Cargando...', style: TextStyle(fontSize: 16)),
             ],
           ),
         ),

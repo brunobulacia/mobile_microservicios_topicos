@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../blocs/auth/auth_bloc.dart';
-import '../blocs/auth/auth_event.dart';
-import '../blocs/auth/auth_state.dart';
+
+import '../../blocs/auth/auth_bloc.dart';
+import '../../blocs/auth/auth_event.dart';
+import '../../blocs/auth/auth_state.dart';
 
 class UserInfoBar extends StatelessWidget {
   const UserInfoBar({super.key});
@@ -21,9 +22,7 @@ class UserInfoBar extends StatelessWidget {
             ),
             child: Row(
               children: [
-                const CircleAvatar(
-                  child: Icon(Icons.person),
-                ),
+                const CircleAvatar(child: Icon(Icons.person)),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(

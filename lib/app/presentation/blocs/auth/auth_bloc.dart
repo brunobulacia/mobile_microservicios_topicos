@@ -1,17 +1,17 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../domain/repositories/authentication_repository.dart';
+
 import '../../../domain/enums.dart';
+import '../../../domain/repositories/authentication_repository.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
-  final AuthenticationRepository _authRepository;
-
   AuthBloc(this._authRepository) : super(AuthInitial()) {
     on<AuthSignInRequested>(_onSignInRequested);
     on<AuthSignOutRequested>(_onSignOutRequested);
     on<AuthCheckRequested>(_onCheckRequested);
   }
+  final AuthenticationRepository _authRepository;
 
   Future<void> _onSignInRequested(
     AuthSignInRequested event,
@@ -19,10 +19,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(AuthLoading());
 
-    final result = await _authRepository.signIn(
-      event.registro,
-      event.password,
-    );
+    final result = await _authRepository.signIn(event.registro, event.password);
 
     result.when(
       (failure) {

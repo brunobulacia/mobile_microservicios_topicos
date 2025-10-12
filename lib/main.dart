@@ -10,8 +10,8 @@ import 'app/data/services/remote/authentication_api.dart';
 import 'app/data/services/remote/internet_checker.dart';
 import 'app/domain/repositories/authentication_repository.dart';
 import 'app/domain/repositories/connectivity_repository.dart';
-import 'app/presentation/blocs/auth/auth_bloc.dart';
 import 'app/my_app.dart';
+import 'app/presentation/blocs/auth/auth_bloc.dart';
 
 void main() {
   final authRepository = AuthenticationRepositoryImpl(

@@ -27,11 +27,11 @@ class _SignInViewState extends State<SignInView> {
           child: BlocListener<AuthBloc, AuthState>(
             listener: (context, state) {
               if (state is AuthAuthenticated) {
-                Navigator.pushReplacementNamed(context, Routes.home);
+                Navigator.pushReplacementNamed(context, Routes.grupoMateria);
               } else if (state is AuthError) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(state.message)),
-                );
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(SnackBar(content: Text(state.message)));
               }
             },
             child: Form(
@@ -39,7 +39,7 @@ class _SignInViewState extends State<SignInView> {
               child: BlocBuilder<AuthBloc, AuthState>(
                 builder: (context, state) {
                   final isLoading = state is AuthLoading;
-                  
+
                   return AbsorbPointer(
                     absorbing: isLoading,
                     child: Column(
@@ -50,7 +50,9 @@ class _SignInViewState extends State<SignInView> {
                           onChanged: (text) {
                             _registro = text.trim().toLowerCase();
                           },
-                          decoration: const InputDecoration(hintText: 'Registro'),
+                          decoration: const InputDecoration(
+                            hintText: 'Registro',
+                          ),
                           validator: (text) {
                             text = text?.trim() ?? '';
                             if (text.isEmpty) {
@@ -66,7 +68,9 @@ class _SignInViewState extends State<SignInView> {
                             _password = text.replaceAll(' ', '');
                           },
                           obscureText: true,
-                          decoration: const InputDecoration(hintText: 'Contraseña'),
+                          decoration: const InputDecoration(
+                            hintText: 'Contraseña',
+                          ),
                           validator: (text) {
                             text = text?.replaceAll(' ', '') ?? '';
                             if (text.length < 4) {

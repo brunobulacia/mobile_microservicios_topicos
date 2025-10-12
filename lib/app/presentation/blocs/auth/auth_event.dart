@@ -8,13 +8,9 @@ abstract class AuthEvent extends Equatable {
 }
 
 class AuthSignInRequested extends AuthEvent {
+  const AuthSignInRequested({required this.registro, required this.password});
   final String registro;
   final String password;
-
-  const AuthSignInRequested({
-    required this.registro,
-    required this.password,
-  });
 
   @override
   List<Object> get props => [registro, password];

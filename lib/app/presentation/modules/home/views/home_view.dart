@@ -4,24 +4,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../blocs/auth/auth_bloc.dart';
 import '../../../blocs/auth/auth_event.dart';
 import '../../../blocs/auth/auth_state.dart';
-import '../../../widgets/user_info_bar.dart';
-import '../../../widgets/user_profile_widget.dart';
+import '../../../global/widgets/user_info_bar.dart';
+import '../../../global/widgets/user_profile_widget.dart';
 import '../../../routes/routes.dart';
 
-class HomeView extends StatefulWidget {
+class HomeView extends StatelessWidget {
   const HomeView({super.key});
-
-  @override
-  State<HomeView> createState() => _HomeViewState();
-}
-
-class _HomeViewState extends State<HomeView> {
-  @override
-  void initState() {
-    super.initState();
-    // Verificar el estado de autenticación al cargar la pantalla
-    context.read<AuthBloc>().add(AuthCheckRequested());
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,7 +30,7 @@ class _HomeViewState extends State<HomeView> {
             if (state is AuthLoading) {
               return const Center(child: CircularProgressIndicator());
             }
-            
+
             if (state is AuthAuthenticated) {
               return SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
@@ -52,11 +40,11 @@ class _HomeViewState extends State<HomeView> {
                     // Barra de información del usuario
                     const UserInfoBar(),
                     const SizedBox(height: 20),
-                    
+
                     // Widget de perfil completo del usuario
                     const UserProfileWidget(),
                     const SizedBox(height: 20),
-                    
+
                     // Ejemplo de acceso directo a los datos del usuario
                     Card(
                       child: Padding(
@@ -71,13 +59,15 @@ class _HomeViewState extends State<HomeView> {
                             const SizedBox(height: 8),
                             Text('Matrícula: ${state.user.matricula}'),
                             Text('PPAC: ${state.user.ppac}'),
-                            Text('Total Maestros de Oferta: ${state.user.maestroDeOferta.length}'),
+                            Text(
+                              'Total Maestros de Oferta: ${state.user.maestroDeOferta.length}',
+                            ),
                           ],
                         ),
                       ),
                     ),
                     const SizedBox(height: 20),
-                    
+
                     // Botón de cerrar sesión
                     ElevatedButton.icon(
                       onPressed: () {
@@ -95,17 +85,13 @@ class _HomeViewState extends State<HomeView> {
                 ),
               );
             }
-            
+
             if (state is AuthError) {
               return Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(
-                      Icons.error,
-                      size: 64,
-                      color: Colors.red,
-                    ),
+                    Icon(Icons.error, size: 64, color: Colors.red),
                     const SizedBox(height: 16),
                     Text(
                       'Error: ${state.message}',
@@ -123,10 +109,8 @@ class _HomeViewState extends State<HomeView> {
                 ),
               );
             }
-            
-            return const Center(
-              child: Text('Estado no reconocido'),
-            );
+
+            return const Center(child: Text('Estado no reconocido'));
           },
         ),
       ),
