@@ -11,7 +11,7 @@ class OfertaGrupoMateria {
       id: json['id'],
       grupoMateriaId: json['grupoMateriaId'],
       maestroDeOfertaId: json['maestroDeOfertaId'],
-      grupoMateria: json['grupoMateria'],
+      grupoMateria: GrupoMateria.fromJson(json['GrupoMateria']),
     );
   }
 
@@ -25,8 +25,13 @@ class OfertaGrupoMateria {
       'id': id,
       'grupoMateriaId': grupoMateriaId,
       'maestroDeOfertaId': maestroDeOfertaId,
-      'grupoMateria': grupoMateria,
+      'GrupoMateria': grupoMateria.toJson(),
     };
+  }
+
+  @override
+  String toString() {
+    return 'OfertaGrupoMateria(id: $id, grupoMateriaId: $grupoMateriaId, maestroDeOfertaId: $maestroDeOfertaId, grupoMateria: $grupoMateria)';
   }
 }
 
@@ -64,6 +69,11 @@ class GrupoMateria {
       'docente': docente.toJson(),
     };
   }
+
+  @override
+  String toString() {
+    return 'GrupoMateria(id: $id, grupo: $grupo, cupos: $cupos, materia: $materia, docente: $docente)';
+  }
 }
 
 class Materia {
@@ -77,6 +87,11 @@ class Materia {
 
   Map<String, dynamic> toJson() {
     return {'nombre': nombre};
+  }
+
+  @override
+  String toString() {
+    return 'Materia(nombre: $nombre)';
   }
 }
 
@@ -95,5 +110,10 @@ class Docente {
 
   Map<String, dynamic> toJson() {
     return {'nombre': nombre, 'apellido_paterno': apellidoPaterno};
+  }
+
+  @override
+  String toString() {
+    return 'Docente(nombre: $nombre, apellidoPaterno: $apellidoPaterno)';
   }
 }
