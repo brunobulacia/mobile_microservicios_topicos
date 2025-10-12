@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../../main.dart';
+import '../../../blocs/auth/auth_bloc.dart';
+import '../../../blocs/auth/auth_event.dart';
+import '../../../blocs/auth/auth_state.dart';
 import '../../../routes/routes.dart';
 
 class SplashView extends StatefulWidget {
@@ -27,22 +31,13 @@ class _SplashViewState extends State<SplashView> {
     print('✅ hasInternet: $hasInternet');
 
     if (hasInternet) {
-      final authenticationRepository = injector.authenticationRepository;
-      final isSignedIn = await authenticationRepository.isSignedIn;
-      if (isSignedIn) {
-        final user = await authenticationRepository.getUserData();
-        if (mounted) {
-          if (user != null) {
-            //home
-            _goTo(Routes.home);
-          } else {
-            //sign in
-            _goTo(Routes.signIn);
-          }
-        }
-      } else if (mounted) {
-        _goTo(Routes.signIn);
+      // Usar Bloc para verificar el estado de autenticación
+      if (mounted) {
+        context.read<AuthBloc>().add(AuthCheckRequested());
       }
+    } else {
+      // Si no hay internet, ir a la página offline
+      _goTo(Routes.offline);
     }
   }
 
@@ -52,12 +47,31 @@ class _SplashViewState extends State<SplashView> {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(
-        child: SizedBox(
-          width: 80,
-          height: 80,
-          child: Center(child: CircularProgressIndicator()),
+    return Scaffold(
+      body: BlocListener<AuthBloc, AuthState>(
+        listener: (context, state) {
+          if (state is AuthAuthenticated) {
+            _goTo(Routes.home);
+          } else if (state is AuthUnauthenticated || state is AuthError) {
+            _goTo(Routes.signIn);
+          }
+        },
+        child: const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: 80,
+                height: 80,
+                child: CircularProgressIndicator(),
+              ),
+              SizedBox(height: 20),
+              Text(
+                'Cargando...',
+                style: TextStyle(fontSize: 16),
+              ),
+            ],
+          ),
         ),
       ),
     );
