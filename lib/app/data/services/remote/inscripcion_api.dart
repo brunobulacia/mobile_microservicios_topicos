@@ -11,11 +11,13 @@ class InscripcionApi {
     Inscripcion inscripcion,
   ) async {
     final response = await _dio.post(
-      '$baseUrl/inscripciones/async/',
+      '$baseUrl/inscripcion/async/',
       data: inscripcion.toJson(),
     );
 
-    if (response.statusCode == 200 || response.statusCode == 201) {
+    if (response.statusCode == 200 ||
+        response.statusCode == 201 ||
+        response.statusCode == 202) {
       return Map<String, dynamic>.from(response.data);
     } else {
       throw Exception('Failed to inscribir materias: ${response.statusCode}');

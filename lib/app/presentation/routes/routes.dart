@@ -5,4 +5,5 @@ class Routes {
   static const home = '/home';
   static const offline = '/offline';
   static const grupoMateria = '/grupo-materia';
+  static const boletaInscripcion = '/boleta-inscripcion';
 }

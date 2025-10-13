@@ -47,10 +47,14 @@ class _GrupoMateriaViewState extends State<GrupoMateriaView> {
       return;
     }
 
+    //Crear el injector para consumir la api de inscripcion
+    final injector = Injector.of(context);
+    final inscripcionRepository = injector.inscripcionRepository;
+
     // Crear el modelo de inscripción
     final inscripcion = Inscripcion(
       registro: registro, // Un ID temporal
-      materiaId: selectedMateriaIds,
+      materiasId: selectedMateriaIds,
     );
 
     // Mostrar confirmación
@@ -64,20 +68,51 @@ class _GrupoMateriaViewState extends State<GrupoMateriaView> {
           children: [
             Text('Registro: ${inscripcion.registro}'),
             const SizedBox(height: 8),
-            Text('Materias seleccionadas: ${inscripcion.materiaId.length}'),
+            Text('Materias seleccionadas: ${inscripcion.materiasId.length}'),
             const SizedBox(height: 8),
             const Text('IDs de materias:'),
-            ...inscripcion.materiaId.map((id) => Text('• $id')),
+            ...inscripcion.materiasId.map((id) => Text('• $id')),
           ],
         ),
         actions: [
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.of(context).pop();
+              print(inscripcion.toJson());
               // Limpiar selecciones después de crear la inscripción
               setState(() {
                 selectedGrupoMateriaIds.clear();
               });
+              try {
+                final result = await inscripcionRepository.inscribirMaterias(
+                  inscripcion,
+                );
+                print('✅ Inscripción enviada: $result');
+
+                // ignore: use_build_context_synchronously
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      '✅ Inscripción enviada correctamente!\nSe procesará en breve.',
+                    ),
+                    backgroundColor: Colors.green,
+                    duration: Duration(seconds: 3),
+                  ),
+                );
+
+                // ignore: use_build_context_synchronously
+                Navigator.pushNamed(context, Routes.boletaInscripcion);
+              } catch (e) {
+                print('❌ Error en inscripción: $e');
+                // ignore: use_build_context_synchronously
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('❌ Error al crear la inscripción: $e'),
+                    backgroundColor: Colors.red,
+                    duration: const Duration(seconds: 5),
+                  ),
+                );
+              }
             },
             child: const Text('Aceptar'),
           ),
@@ -85,7 +120,7 @@ class _GrupoMateriaViewState extends State<GrupoMateriaView> {
       ),
     );
 
-    print('🎓 Inscripción creada: ${inscripcion.toJson()}');
+    // print('🎓 Inscripción creada: ${inscripcion.toJson()}');
   }
 
   @override
