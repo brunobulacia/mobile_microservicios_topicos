@@ -3,8 +3,16 @@ import 'package:flutter/material.dart';
 import '../../../domain/models/oferta_grupo_materia.dart';
 
 class GrupoMateriaCard extends StatelessWidget {
-  const GrupoMateriaCard({super.key, required this.grupoMateria});
+  const GrupoMateriaCard({
+    super.key,
+    required this.grupoMateria,
+    required this.isSelected,
+    required this.onSelectionChanged,
+  });
+
   final GrupoMateria grupoMateria;
+  final bool isSelected;
+  final Function(bool) onSelectionChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -18,17 +26,34 @@ class GrupoMateriaCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Título de la materia
-            Text(
-              grupoMateria.materia.nombre,
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.blue,
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    grupoMateria.materia.nombre,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue,
+                    ),
+                  ),
+                ),
+                Checkbox(
+                  value: isSelected,
+                  onChanged: (value) {
+                    if (value != null) {
+                      onSelectionChanged(value);
+                      print(
+                        '${isSelected ? "Deseleccionado" : "Seleccionado"}: ${grupoMateria.id}',
+                      );
+                    }
+                  },
+                ),
+              ],
             ),
-            const SizedBox(height: 12),
 
+            // Título de la materia
+            const SizedBox(height: 12),
             // Información del grupo y cupos
             Row(
               children: [

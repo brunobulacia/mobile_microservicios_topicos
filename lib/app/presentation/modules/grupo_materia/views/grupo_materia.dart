@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../../main.dart';
+import '../../../../domain/models/inscripcion.dart';
 import '../../../../domain/models/oferta_grupo_materia.dart';
 import '../../../blocs/auth/auth_bloc.dart';
 import '../../../blocs/auth/auth_state.dart';
@@ -20,6 +21,72 @@ class _GrupoMateriaViewState extends State<GrupoMateriaView> {
   bool isLoading = false;
   String? error;
   String? currentMaestroDeOfertaId;
+
+  // Estado para manejar las selecciones
+  Set<String> selectedGrupoMateriaIds = {};
+
+  // Lista de materias seleccionadas para crear la inscripción
+  List<String> get selectedMateriaIds {
+    if (ofertasGrupoMateria == null) return [];
+    return ofertasGrupoMateria!
+        .where(
+          (oferta) => selectedGrupoMateriaIds.contains(oferta.grupoMateria.id),
+        )
+        .map((oferta) => oferta.grupoMateria.id)
+        .toList();
+  }
+
+  void _crearInscripcion(String registro) {
+    if (selectedGrupoMateriaIds.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('⚠️ Selecciona al menos una materia'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // Crear el modelo de inscripción
+    final inscripcion = Inscripcion(
+      registro: registro, // Un ID temporal
+      materiaId: selectedMateriaIds,
+    );
+
+    // Mostrar confirmación
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('💡 Inscripción Creada'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Registro: ${inscripcion.registro}'),
+            const SizedBox(height: 8),
+            Text('Materias seleccionadas: ${inscripcion.materiaId.length}'),
+            const SizedBox(height: 8),
+            const Text('IDs de materias:'),
+            ...inscripcion.materiaId.map((id) => Text('• $id')),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              // Limpiar selecciones después de crear la inscripción
+              setState(() {
+                selectedGrupoMateriaIds.clear();
+              });
+            },
+            child: const Text('Aceptar'),
+          ),
+        ],
+      ),
+    );
+
+    print('🎓 Inscripción creada: ${inscripcion.toJson()}');
+  }
 
   @override
   void initState() {
@@ -141,6 +208,20 @@ class _GrupoMateriaViewState extends State<GrupoMateriaView> {
           }
         },
       ),
+
+      floatingActionButton: selectedGrupoMateriaIds.isNotEmpty
+          ? FloatingActionButton.extended(
+              onPressed: () {
+                final authState = context.read<AuthBloc>().state;
+                if (authState is AuthAuthenticated) {
+                  _crearInscripcion(authState.user.matricula);
+                }
+              },
+              icon: const Icon(Icons.add),
+              label: Text('Inscribir (${selectedGrupoMateriaIds.length})'),
+              backgroundColor: Colors.green,
+            )
+          : null,
     );
   }
 
@@ -231,9 +312,29 @@ class _GrupoMateriaViewState extends State<GrupoMateriaView> {
             itemCount: ofertasGrupoMateria!.length,
             itemBuilder: (context, index) {
               final oferta = ofertasGrupoMateria![index];
+              final grupoMateriaId = oferta.grupoMateria.id;
+              final isSelected = selectedGrupoMateriaIds.contains(
+                grupoMateriaId,
+              );
+
               return Padding(
                 padding: const EdgeInsets.only(bottom: 12),
-                child: GrupoMateriaCard(grupoMateria: oferta.grupoMateria),
+                child: GrupoMateriaCard(
+                  grupoMateria: oferta.grupoMateria,
+                  isSelected: isSelected,
+                  onSelectionChanged: (selected) {
+                    setState(() {
+                      if (selected) {
+                        selectedGrupoMateriaIds.add(grupoMateriaId);
+                      } else {
+                        selectedGrupoMateriaIds.remove(grupoMateriaId);
+                      }
+                    });
+
+                    // Debug: mostrar las materias seleccionadas
+                    print('📝 Materias seleccionadas: $selectedMateriaIds');
+                  },
+                ),
               );
             },
           ),
