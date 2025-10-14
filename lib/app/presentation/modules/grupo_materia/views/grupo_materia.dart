@@ -8,6 +8,8 @@ import '../../../blocs/auth/auth_bloc.dart';
 import '../../../blocs/auth/auth_state.dart';
 import '../../../global/widgets/grupo_materia_card.dart';
 import '../../../routes/routes.dart';
+import '../../../../data/services/idempotency_manager.dart';
+import '../../../../data/services/inscripcion_polling_service.dart';
 
 class GrupoMateriaView extends StatefulWidget {
   const GrupoMateriaView({super.key});
@@ -24,6 +26,11 @@ class _GrupoMateriaViewState extends State<GrupoMateriaView> {
 
   // Estado para manejar las selecciones
   Set<String> selectedGrupoMateriaIds = {};
+  
+  // Variables para el polling
+  InscripcionPollingService? _pollingService;
+  String? _currentJobId;
+  bool _isInscriptionInProgress = false;
 
   // Lista de materias seleccionadas para crear la inscripción
   List<String> get selectedMateriaIds {
@@ -47,21 +54,40 @@ class _GrupoMateriaViewState extends State<GrupoMateriaView> {
       return;
     }
 
-    //Crear el injector para consumir la api de inscripcion
-    final injector = Injector.of(context);
-    final inscripcionRepository = injector.inscripcionRepository;
-
-    // Crear el modelo de inscripción
-    final inscripcion = Inscripcion(
-      registro: registro, // Un ID temporal
+    // Crear el modelo de inscripción temporal para generar requestId
+    final tempInscripcion = Inscripcion(
+      registro: registro,
       materiasId: selectedMateriaIds,
+      requestId: '', // Temporal
+    );
+
+    // Generar requestId basado en el contenido
+    final requestId = IdempotencyManager.generateRequestId(tempInscripcion);
+    
+    // Verificar si ya hay una inscripción en progreso
+    if (IdempotencyManager.hasActiveRequest(requestId)) {
+      final jobId = IdempotencyManager.getJobIdForRequest(requestId);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('⚠️ Ya hay una inscripción similar en progreso (Job ID: ${jobId?.substring(0, 8)}...)'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // Crear la inscripción final con requestId
+    final inscripcion = Inscripcion(
+      registro: registro,
+      materiasId: selectedMateriaIds,
+      requestId: requestId,
     );
 
     // Mostrar confirmación
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('💡 Inscripción Creada'),
+        title: const Text('🎓 Confirmar Inscripción'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -70,63 +96,226 @@ class _GrupoMateriaViewState extends State<GrupoMateriaView> {
             const SizedBox(height: 8),
             Text('Materias seleccionadas: ${inscripcion.materiasId.length}'),
             const SizedBox(height: 8),
-            const Text('IDs de materias:'),
-            ...inscripcion.materiasId.map((id) => Text('• $id')),
+            const Text('⚠️ Esta inscripción se procesará de forma asíncrona'),
+            const SizedBox(height: 4),
+            const Text('Podrás ver el progreso en tiempo real'),
           ],
         ),
         actions: [
           TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
             onPressed: () async {
               Navigator.of(context).pop();
-              print(inscripcion.toJson());
-              // Limpiar selecciones después de crear la inscripción
-              setState(() {
-                selectedGrupoMateriaIds.clear();
-              });
-              try {
-                final result = await inscripcionRepository.inscribirMaterias(
-                  inscripcion,
-                );
-                print('✅ Inscripción enviada: $result');
-
-                // ignore: use_build_context_synchronously
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      '✅ Inscripción enviada correctamente!\nSe procesará en breve.',
-                    ),
-                    backgroundColor: Colors.green,
-                    duration: Duration(seconds: 3),
-                  ),
-                );
-
-                // ignore: use_build_context_synchronously
-                Navigator.pushNamed(context, Routes.boletaInscripcion);
-              } catch (e) {
-                print('❌ Error en inscripción: $e');
-                // ignore: use_build_context_synchronously
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('❌ Error al crear la inscripción: $e'),
-                    backgroundColor: Colors.red,
-                    duration: const Duration(seconds: 5),
-                  ),
-                );
-              }
+              await _procesarInscripcion(inscripcion);
             },
-            child: const Text('Aceptar'),
+            child: const Text('Confirmar'),
           ),
         ],
       ),
     );
+  }
 
-    // print('🎓 Inscripción creada: ${inscripcion.toJson()}');
+  Future<void> _procesarInscripcion(Inscripcion inscripcion) async {
+    setState(() {
+      _isInscriptionInProgress = true;
+    });
+
+    final injector = Injector.of(context);
+    final inscripcionRepository = injector.inscripcionRepository;
+
+    try {
+      // Enviar inscripción al backend
+      final jobResponse = await inscripcionRepository.inscribirMaterias(inscripcion);
+      
+      // Registrar la request activa
+      IdempotencyManager.registerActiveRequest(inscripcion.requestId, jobResponse.jobId);
+      
+      setState(() {
+        _currentJobId = jobResponse.jobId;
+        selectedGrupoMateriaIds.clear(); // Limpiar selecciones
+      });
+
+      // Inicializar servicio de polling
+      _pollingService = InscripcionPollingService(inscripcionRepository);
+      
+      // Mostrar dialog de progreso
+      _showProgressDialog(jobResponse.jobId);
+      
+      // Iniciar polling
+      _pollingService!.startPolling(jobResponse.jobId).listen(
+        (jobStatus) {
+          print('📊 Estado del job: ${jobStatus.status} - Progreso: ${jobStatus.progress}%');
+          
+          if (jobStatus.isCompleted) {
+            // Completar request
+            IdempotencyManager.completeRequest(inscripcion.requestId);
+            _handleInscripcionCompleted(jobStatus);
+          } else if (jobStatus.isFailed) {
+            // Completar request (incluso si falló)
+            IdempotencyManager.completeRequest(inscripcion.requestId);
+            _handleInscripcionFailed(jobStatus);
+          }
+        },
+        onError: (error) {
+          print('❌ Error en polling: $error');
+          IdempotencyManager.completeRequest(inscripcion.requestId);
+          _handlePollingError(error);
+        },
+      );
+
+    } catch (e) {
+      print('❌ Error al enviar inscripción: $e');
+      setState(() {
+        _isInscriptionInProgress = false;
+      });
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Error al enviar inscripción: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _showProgressDialog(String jobId) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('🔄 Procesando Inscripción'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            Text('Job ID: ${jobId.substring(0, 8)}...'),
+            const SizedBox(height: 8),
+            const Text('Tu inscripción está siendo procesada'),
+            const Text('Por favor espera...'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              // No cancelar el polling, solo cerrar el dialog
+            },
+            child: const Text('Continuar en segundo plano'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _handleInscripcionCompleted(jobStatus) {
+    setState(() {
+      _isInscriptionInProgress = false;
+      _currentJobId = null;
+    });
+
+    // Cerrar dialog de progreso si está abierto
+    Navigator.of(context).popUntil((route) => route.settings.name != null);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('✅ ¡Inscripción completada exitosamente!'),
+        backgroundColor: Colors.green,
+        duration: Duration(seconds: 3),
+      ),
+    );
+
+    // Navegar a boleta de inscripción
+    Navigator.pushNamed(context, Routes.boletaInscripcion);
+  }
+
+  void _handleInscripcionFailed(jobStatus) {
+    setState(() {
+      _isInscriptionInProgress = false;
+      _currentJobId = null;
+    });
+
+    // Cerrar dialog de progreso si está abierto
+    Navigator.of(context).popUntil((route) => route.settings.name != null);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('❌ Error en la inscripción: ${jobStatus.result ?? 'Error desconocido'}'),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 5),
+      ),
+    );
+  }
+
+  void _handlePollingError(dynamic error) {
+    setState(() {
+      _isInscriptionInProgress = false;
+      _currentJobId = null;
+    });
+
+    // Cerrar dialog de progreso si está abierto  
+    Navigator.of(context).popUntil((route) => route.settings.name != null);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('❌ Error de conexión: $error'),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 5),
+      ),
+    );
   }
 
   @override
   void initState() {
     super.initState();
     // No llamamos _init aquí porque ahora depende del estado de auth
+  }
+
+  @override
+  void dispose() {
+    // Limpiar polling service
+    _pollingService?.dispose();
+    super.dispose();
+  }
+
+  Widget? _buildFloatingActionButton() {
+    // Si hay una inscripción en progreso, mostrar indicador
+    if (_isInscriptionInProgress) {
+      return FloatingActionButton.extended(
+        onPressed: null, // Deshabilitado
+        icon: const SizedBox(
+          width: 16,
+          height: 16,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+          ),
+        ),
+        label: Text('Procesando... ${_currentJobId?.substring(0, 6) ?? ''}'),
+        backgroundColor: Colors.orange,
+      );
+    }
+
+    // Si hay materias seleccionadas, mostrar botón de inscripción
+    if (selectedGrupoMateriaIds.isNotEmpty) {
+      return FloatingActionButton.extended(
+        onPressed: () {
+          final authState = context.read<AuthBloc>().state;
+          if (authState is AuthAuthenticated) {
+            _crearInscripcion(authState.user.matricula);
+          }
+        },
+        icon: const Icon(Icons.add),
+        label: Text('Inscribir (${selectedGrupoMateriaIds.length})'),
+        backgroundColor: Colors.green,
+      );
+    }
+
+    // Si no hay nada seleccionado, no mostrar botón
+    return null;
   }
 
   Future<void> _init(String maestroDeOfertaId) async {
@@ -248,19 +437,7 @@ class _GrupoMateriaViewState extends State<GrupoMateriaView> {
         },
       ),
 
-      floatingActionButton: selectedGrupoMateriaIds.isNotEmpty
-          ? FloatingActionButton.extended(
-              onPressed: () {
-                final authState = context.read<AuthBloc>().state;
-                if (authState is AuthAuthenticated) {
-                  _crearInscripcion(authState.user.matricula);
-                }
-              },
-              icon: const Icon(Icons.add),
-              label: Text('Inscribir (${selectedGrupoMateriaIds.length})'),
-              backgroundColor: Colors.green,
-            )
-          : null,
+      floatingActionButton: _buildFloatingActionButton(),
     );
   }
 
