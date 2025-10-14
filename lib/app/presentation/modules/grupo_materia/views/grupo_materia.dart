@@ -425,9 +425,6 @@ class _GrupoMateriaViewState extends State<GrupoMateriaView> {
             Navigator.pushNamed(context, Routes.home);
           } else if (index == 2) {
             Navigator.pushNamed(context, Routes.boletaInscripcion);
-          } else {
-            // Ya estamos en Materias
-            Navigator.pushNamed(context, Routes.grupoMateria);
           }
         },
       ),

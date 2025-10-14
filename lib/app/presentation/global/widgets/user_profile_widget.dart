@@ -35,7 +35,7 @@ class UserProfileWidget extends StatelessWidget {
                   _buildInfoRow('Teléfono', user.telefono),
                   _buildInfoRow('PPAC', user.ppac.toString()),
                   const SizedBox(height: 16),
-                  if (user.maestroDeOferta.isNotEmpty) ...[
+                  /* if (user.maestroDeOferta.isNotEmpty) ...[
                     Text(
                       'Maestro de Oferta:',
                       style: Theme.of(context).textTheme.titleMedium,
@@ -47,7 +47,7 @@ class UserProfileWidget extends StatelessWidget {
                         child: Text('• ID: ${maestro.id}'),
                       ),
                     ),
-                  ],
+                  ], */
                 ],
               ),
             ),

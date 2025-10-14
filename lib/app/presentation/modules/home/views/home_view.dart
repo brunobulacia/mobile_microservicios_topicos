@@ -59,9 +59,6 @@ class HomeView extends StatelessWidget {
                             const SizedBox(height: 8),
                             Text('Matrícula: ${state.user.matricula}'),
                             Text('PPAC: ${state.user.ppac}'),
-                            Text(
-                              'Total Maestros de Oferta: ${state.user.maestroDeOferta.length}',
-                            ),
                           ],
                         ),
                       ),
