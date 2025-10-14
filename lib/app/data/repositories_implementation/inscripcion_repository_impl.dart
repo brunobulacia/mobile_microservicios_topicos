@@ -9,9 +9,7 @@ class InscripcionRepositoryImpl implements InscripcionRepository {
   final InscripcionApi _inscripcionApi;
 
   @override
-  Future<JobResponse> inscribirMaterias(
-    Inscripcion inscripcion,
-  ) async {
+  Future<JobResponse> inscribirMaterias(Inscripcion inscripcion) async {
     final response = await _inscripcionApi.inscribirMaterias(inscripcion);
     return response;
   }

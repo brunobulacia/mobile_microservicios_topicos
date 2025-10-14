@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:crypto/crypto.dart';
 
 import '../../domain/models/inscripcion.dart';
@@ -6,14 +7,18 @@ import '../../domain/models/inscripcion.dart';
 class IdempotencyManager {
   // Mapa para almacenar los requestIds activos y sus jobIds
   static final Map<String, String> _activeRequests = {};
-  
+
   /// Genera un requestId único basado en el contenido de la inscripción
   static String generateRequestId(Inscripcion inscripcion) {
     // Crear un hash del contenido para asegurar idempotencia
-    final content = '${inscripcion.registro}_${inscripcion.materiasId.join(',')}';
+    final content =
+        '${inscripcion.registro}_${inscripcion.materiasId.join(',')}';
     final bytes = utf8.encode(content);
     final digest = sha256.convert(bytes);
-    return digest.toString().substring(0, 16); // Tomar los primeros 16 caracteres
+    return digest.toString().substring(
+      0,
+      16,
+    ); // Tomar los primeros 16 caracteres
   }
 
   /// Verifica si ya existe una request activa para esta inscripción

@@ -1,7 +1,7 @@
 class Inscripcion {
   Inscripcion({
-    required this.registro, 
-    required this.materiasId, 
+    required this.registro,
+    required this.materiasId,
     required this.requestId,
   });
 
@@ -12,14 +12,14 @@ class Inscripcion {
       requestId: json['requestId'] as String,
     );
   }
-  
+
   final String registro;
   final List<String> materiasId;
   final String requestId;
 
   Map<String, dynamic> toJson() {
     return {
-      'registro': registro, 
+      'registro': registro,
       'materiasId': materiasId,
       'requestId': requestId,
     };

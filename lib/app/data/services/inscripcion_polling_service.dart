@@ -12,7 +12,10 @@ class InscripcionPollingService {
   final Map<String, StreamController<JobStatus>> _statusStreams = {};
 
   /// Inicia el polling para un jobId específico
-  Stream<JobStatus> startPolling(String jobId, {Duration interval = const Duration(seconds: 2)}) {
+  Stream<JobStatus> startPolling(
+    String jobId, {
+    Duration interval = const Duration(seconds: 2),
+  }) {
     // Si ya existe un stream para este jobId, retornamos el existente
     if (_statusStreams.containsKey(jobId)) {
       return _statusStreams[jobId]!.stream;
@@ -28,15 +31,21 @@ class InscripcionPollingService {
     return controller.stream;
   }
 
-  void _startPollingTimer(String jobId, Duration interval, StreamController<JobStatus> controller) {
+  void _startPollingTimer(
+    String jobId,
+    Duration interval,
+    StreamController<JobStatus> controller,
+  ) {
     // Cancelar timer existente si existe
     _activePolls[jobId]?.cancel();
 
     // Crear nuevo timer
     _activePolls[jobId] = Timer.periodic(interval, (timer) async {
       try {
-        final status = await _inscripcionRepository.consultarEstadoInscripcion(jobId);
-        
+        final status = await _inscripcionRepository.consultarEstadoInscripcion(
+          jobId,
+        );
+
         // Emitir el estado actual
         if (!controller.isClosed) {
           controller.add(status);
@@ -51,7 +60,7 @@ class InscripcionPollingService {
         if (!controller.isClosed) {
           controller.addError(e);
         }
-        
+
         // Opcional: implementar retry con backoff exponencial
         _implementRetryWithBackoff(jobId, interval, controller, e);
       }
@@ -59,19 +68,19 @@ class InscripcionPollingService {
   }
 
   void _implementRetryWithBackoff(
-    String jobId, 
-    Duration originalInterval, 
-    StreamController<JobStatus> controller, 
-    dynamic error
+    String jobId,
+    Duration originalInterval,
+    StreamController<JobStatus> controller,
+    dynamic error,
   ) {
     // Detener el timer actual
     _activePolls[jobId]?.cancel();
-    
+
     // Calcular nuevo intervalo con backoff exponencial (máximo 30 segundos)
     final newInterval = Duration(
-      milliseconds: min(originalInterval.inMilliseconds * 2, 30000)
+      milliseconds: min(originalInterval.inMilliseconds * 2, 30000),
     );
-    
+
     // Reintentar después de un delay
     Timer(const Duration(seconds: 5), () {
       if (_statusStreams.containsKey(jobId) && !controller.isClosed) {
@@ -84,7 +93,7 @@ class InscripcionPollingService {
   void stopPolling(String jobId) {
     _activePolls[jobId]?.cancel();
     _activePolls.remove(jobId);
-    
+
     _statusStreams[jobId]?.close();
     _statusStreams.remove(jobId);
   }

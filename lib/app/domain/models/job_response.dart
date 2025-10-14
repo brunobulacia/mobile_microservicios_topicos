@@ -47,10 +47,7 @@ class JobResponse {
 }
 
 class LoadBalancing {
-  LoadBalancing({
-    required this.selectedQueue,
-    required this.allQueues,
-  });
+  LoadBalancing({required this.selectedQueue, required this.allQueues});
 
   factory LoadBalancing.fromJson(Map<String, dynamic> json) {
     return LoadBalancing(
@@ -92,11 +89,7 @@ class SelectedQueue {
   final int load;
 
   Map<String, dynamic> toJson() {
-    return {
-      'colaId': colaId,
-      'nombre': nombre,
-      'load': load,
-    };
+    return {'colaId': colaId, 'nombre': nombre, 'load': load};
   }
 }
 

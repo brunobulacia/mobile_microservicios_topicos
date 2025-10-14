@@ -9,9 +9,7 @@ class InscripcionApi {
   InscripcionApi(this._dio);
   final Dio _dio;
 
-  Future<JobResponse> inscribirMaterias(
-    Inscripcion inscripcion,
-  ) async {
+  Future<JobResponse> inscribirMaterias(Inscripcion inscripcion) async {
     final response = await _dio.post(
       '$baseUrl/inscripcion/async/',
       data: inscripcion.toJson(),

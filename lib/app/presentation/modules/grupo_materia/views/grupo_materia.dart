@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../../main.dart';
+import '../../../../data/services/idempotency_manager.dart';
+import '../../../../data/services/inscripcion_polling_service.dart';
 import '../../../../domain/models/inscripcion.dart';
 import '../../../../domain/models/oferta_grupo_materia.dart';
 import '../../../blocs/auth/auth_bloc.dart';
 import '../../../blocs/auth/auth_state.dart';
 import '../../../global/widgets/grupo_materia_card.dart';
 import '../../../routes/routes.dart';
-import '../../../../data/services/idempotency_manager.dart';
-import '../../../../data/services/inscripcion_polling_service.dart';
 
 class GrupoMateriaView extends StatefulWidget {
   const GrupoMateriaView({super.key});
@@ -26,7 +26,7 @@ class _GrupoMateriaViewState extends State<GrupoMateriaView> {
 
   // Estado para manejar las selecciones
   Set<String> selectedGrupoMateriaIds = {};
-  
+
   // Variables para el polling
   InscripcionPollingService? _pollingService;
   String? _currentJobId;
@@ -63,13 +63,15 @@ class _GrupoMateriaViewState extends State<GrupoMateriaView> {
 
     // Generar requestId basado en el contenido
     final requestId = IdempotencyManager.generateRequestId(tempInscripcion);
-    
+
     // Verificar si ya hay una inscripción en progreso
     if (IdempotencyManager.hasActiveRequest(requestId)) {
       final jobId = IdempotencyManager.getJobIdForRequest(requestId);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('⚠️ Ya hay una inscripción similar en progreso (Job ID: ${jobId?.substring(0, 8)}...)'),
+          content: Text(
+            '⚠️ Ya hay una inscripción similar en progreso (Job ID: ${jobId?.substring(0, 8)}...)',
+          ),
           backgroundColor: Colors.orange,
         ),
       );
@@ -128,11 +130,16 @@ class _GrupoMateriaViewState extends State<GrupoMateriaView> {
 
     try {
       // Enviar inscripción al backend
-      final jobResponse = await inscripcionRepository.inscribirMaterias(inscripcion);
-      
+      final jobResponse = await inscripcionRepository.inscribirMaterias(
+        inscripcion,
+      );
+
       // Registrar la request activa
-      IdempotencyManager.registerActiveRequest(inscripcion.requestId, jobResponse.jobId);
-      
+      IdempotencyManager.registerActiveRequest(
+        inscripcion.requestId,
+        jobResponse.jobId,
+      );
+
       setState(() {
         _currentJobId = jobResponse.jobId;
         selectedGrupoMateriaIds.clear(); // Limpiar selecciones
@@ -140,38 +147,41 @@ class _GrupoMateriaViewState extends State<GrupoMateriaView> {
 
       // Inicializar servicio de polling
       _pollingService = InscripcionPollingService(inscripcionRepository);
-      
+
       // Mostrar dialog de progreso
       _showProgressDialog(jobResponse.jobId);
-      
-      // Iniciar polling
-      _pollingService!.startPolling(jobResponse.jobId).listen(
-        (jobStatus) {
-          print('📊 Estado del job: ${jobStatus.status} - Progreso: ${jobStatus.progress}%');
-          
-          if (jobStatus.isCompleted) {
-            // Completar request
-            IdempotencyManager.completeRequest(inscripcion.requestId);
-            _handleInscripcionCompleted(jobStatus);
-          } else if (jobStatus.isFailed) {
-            // Completar request (incluso si falló)
-            IdempotencyManager.completeRequest(inscripcion.requestId);
-            _handleInscripcionFailed(jobStatus);
-          }
-        },
-        onError: (error) {
-          print('❌ Error en polling: $error');
-          IdempotencyManager.completeRequest(inscripcion.requestId);
-          _handlePollingError(error);
-        },
-      );
 
+      // Iniciar polling
+      _pollingService!
+          .startPolling(jobResponse.jobId)
+          .listen(
+            (jobStatus) {
+              print(
+                '📊 Estado del job: ${jobStatus.status} - Progreso: ${jobStatus.progress}%',
+              );
+
+              if (jobStatus.isCompleted) {
+                // Completar request
+                IdempotencyManager.completeRequest(inscripcion.requestId);
+                _handleInscripcionCompleted(jobStatus);
+              } else if (jobStatus.isFailed) {
+                // Completar request (incluso si falló)
+                IdempotencyManager.completeRequest(inscripcion.requestId);
+                _handleInscripcionFailed(jobStatus);
+              }
+            },
+            onError: (error) {
+              print('❌ Error en polling: $error');
+              IdempotencyManager.completeRequest(inscripcion.requestId);
+              _handlePollingError(error);
+            },
+          );
     } catch (e) {
       print('❌ Error al enviar inscripción: $e');
       setState(() {
         _isInscriptionInProgress = false;
       });
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('❌ Error al enviar inscripción: $e'),
@@ -243,7 +253,9 @@ class _GrupoMateriaViewState extends State<GrupoMateriaView> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('❌ Error en la inscripción: ${jobStatus.result ?? 'Error desconocido'}'),
+        content: Text(
+          '❌ Error en la inscripción: ${jobStatus.result ?? 'Error desconocido'}',
+        ),
         backgroundColor: Colors.red,
         duration: const Duration(seconds: 5),
       ),
@@ -256,7 +268,7 @@ class _GrupoMateriaViewState extends State<GrupoMateriaView> {
       _currentJobId = null;
     });
 
-    // Cerrar dialog de progreso si está abierto  
+    // Cerrar dialog de progreso si está abierto
     Navigator.of(context).popUntil((route) => route.settings.name != null);
 
     ScaffoldMessenger.of(context).showSnackBar(
