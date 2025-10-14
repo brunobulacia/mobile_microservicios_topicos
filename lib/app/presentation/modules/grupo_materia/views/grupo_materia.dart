@@ -31,6 +31,7 @@ class _GrupoMateriaViewState extends State<GrupoMateriaView> {
   InscripcionPollingService? _pollingService;
   String? _currentJobId;
   bool _isInscriptionInProgress = false;
+  bool _isRefreshingCupos = false;
 
   // Lista de materias seleccionadas para crear la inscripción
   List<String> get selectedMateriaIds {
@@ -221,7 +222,7 @@ class _GrupoMateriaViewState extends State<GrupoMateriaView> {
     );
   }
 
-  void _handleInscripcionCompleted(jobStatus) {
+  void _handleInscripcionCompleted(jobStatus) async {
     setState(() {
       _isInscriptionInProgress = false;
       _currentJobId = null;
@@ -230,11 +231,16 @@ class _GrupoMateriaViewState extends State<GrupoMateriaView> {
     // Cerrar dialog de progreso si está abierto
     Navigator.of(context).popUntil((route) => route.settings.name != null);
 
+    // Refrescar los cupos después de la inscripción exitosa
+    await _refreshCuposAfterInscripcion();
+
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('✅ ¡Inscripción completada exitosamente!'),
+        content: Text(
+          '✅ ¡Inscripción completada exitosamente!\n🔄 Cupos actualizados',
+        ),
         backgroundColor: Colors.green,
-        duration: Duration(seconds: 3),
+        duration: Duration(seconds: 4),
       ),
     );
 
@@ -242,7 +248,7 @@ class _GrupoMateriaViewState extends State<GrupoMateriaView> {
     Navigator.pushNamed(context, Routes.boletaInscripcion);
   }
 
-  void _handleInscripcionFailed(jobStatus) {
+  void _handleInscripcionFailed(jobStatus) async {
     setState(() {
       _isInscriptionInProgress = false;
       _currentJobId = null;
@@ -260,9 +266,12 @@ class _GrupoMateriaViewState extends State<GrupoMateriaView> {
         duration: const Duration(seconds: 5),
       ),
     );
+
+    // Refrescar los cupos incluso cuando hay error, para mantener sincronización
+    await _refreshCuposAfterInscripcion();
   }
 
-  void _handlePollingError(dynamic error) {
+  void _handlePollingError(dynamic error) async {
     setState(() {
       _isInscriptionInProgress = false;
       _currentJobId = null;
@@ -278,6 +287,9 @@ class _GrupoMateriaViewState extends State<GrupoMateriaView> {
         duration: const Duration(seconds: 5),
       ),
     );
+
+    // Refrescar los cupos en caso de error de polling para mantener datos actualizados
+    await _refreshCuposAfterInscripcion();
   }
 
   @override
@@ -291,6 +303,44 @@ class _GrupoMateriaViewState extends State<GrupoMateriaView> {
     // Limpiar polling service
     _pollingService?.dispose();
     super.dispose();
+  }
+
+  /// Refresca los cupos después de una inscripción
+  Future<void> _refreshCuposAfterInscripcion() async {
+    if (currentMaestroDeOfertaId == null) return;
+
+    setState(() {
+      _isRefreshingCupos = true;
+    });
+
+    try {
+      print('🔄 Refrescando cupos después de inscripción...');
+
+      final injector = Injector.of(context);
+      final ofertaGrupoMateriaRepository =
+          injector.ofertaGrupoMateriaRepository;
+
+      // Hacer que el refresh sea visible por al menos 1 segundo
+      final refreshFuture = ofertaGrupoMateriaRepository
+          .getOfertasGruposMaterias(currentMaestroDeOfertaId!);
+      final delayFuture = Future.delayed(const Duration(milliseconds: 800));
+
+      final results = await Future.wait([refreshFuture, delayFuture]);
+      final getGruposMaterias = results[0] as List<OfertaGrupoMateria>;
+
+      setState(() {
+        ofertasGrupoMateria = getGruposMaterias;
+        _isRefreshingCupos = false;
+      });
+
+      print('✅ Cupos refrescados correctamente');
+    } catch (e) {
+      print('❌ Error al refrescar cupos: $e');
+      setState(() {
+        _isRefreshingCupos = false;
+      });
+      // No mostrar error al usuario, solo loggear
+    }
   }
 
   Widget? _buildFloatingActionButton() {
@@ -385,6 +435,21 @@ class _GrupoMateriaViewState extends State<GrupoMateriaView> {
         title: const Text('Maestro de Oferta'),
         backgroundColor: Colors.blue,
         foregroundColor: Colors.white,
+        actions: _isRefreshingCupos
+            ? [
+                const Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  ),
+                ),
+              ]
+            : null,
       ),
       body: BlocBuilder<AuthBloc, AuthState>(
         builder: (context, authState) {
