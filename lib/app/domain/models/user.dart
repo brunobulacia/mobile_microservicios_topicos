@@ -14,16 +14,16 @@ class User {
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
-      id: json['id'],
-      nombre: json['nombre'],
-      apellidoPaterno: json['apellido_paterno'],
-      apellidoMaterno: json['apellido_materno'],
-      telefono: json['telefono'],
-      ci: json['ci'],
-      email: json['email'],
-      matricula: json['matricula'],
-      ppac: json['ppac'],
-      maestroDeOferta: (json['MaestroDeOferta'] as List)
+      id: json['id'] ?? '',
+      nombre: json['nombre'] ?? '',
+      apellidoPaterno: json['apellido_paterno'] ?? '',
+      apellidoMaterno: json['apellido_materno'] ?? '',
+      telefono: json['telefono'] ?? '',
+      ci: json['ci'] ?? '',
+      email: json['email'] ?? '',
+      matricula: json['matricula'] ?? '',
+      ppac: json['ppac'] ?? 0,
+      maestroDeOferta: (json['MaestroDeOferta'] as List? ?? [])
           .map((e) => MaestroDeOferta.fromJson(e))
           .toList(),
     );
@@ -59,7 +59,7 @@ class MaestroDeOferta {
   MaestroDeOferta({required this.id});
 
   factory MaestroDeOferta.fromJson(Map<String, dynamic> json) {
-    return MaestroDeOferta(id: json['id']);
+    return MaestroDeOferta(id: json['id'] ?? '');
   }
   final String id;
 

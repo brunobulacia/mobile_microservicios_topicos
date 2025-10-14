@@ -143,7 +143,7 @@ class _GrupoMateriaViewState extends State<GrupoMateriaView> {
       final getGruposMaterias = await ofertaGrupoMateriaRepository
           .getOfertasGruposMaterias(maestroDeOfertaId);
 
-      print('✅ getGruposMaterias: $getGruposMaterias');
+      // print('✅ getGruposMaterias: $getGruposMaterias');
 
       setState(() {
         ofertasGrupoMateria = getGruposMaterias;
@@ -165,13 +165,17 @@ class _GrupoMateriaViewState extends State<GrupoMateriaView> {
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.book), label: 'Materias'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Perfil'),
+          BottomNavigationBarItem(icon: Icon(Icons.receipt), label: 'Boleta'),
         ],
         currentIndex: 0, // Cambiar según la página actual
         onTap: (index) {
           // Manejar la navegación aquí
           if (index == 1) {
             Navigator.pushNamed(context, Routes.home);
+          } else if (index == 2) {
+            Navigator.pushNamed(context, Routes.boletaInscripcion);
           } else {
+            // Ya estamos en Materias
             Navigator.pushNamed(context, Routes.grupoMateria);
           }
         },

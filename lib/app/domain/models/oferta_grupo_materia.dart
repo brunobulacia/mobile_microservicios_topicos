@@ -8,10 +8,10 @@ class OfertaGrupoMateria {
 
   factory OfertaGrupoMateria.fromJson(Map<String, dynamic> json) {
     return OfertaGrupoMateria(
-      id: json['id'],
-      grupoMateriaId: json['grupoMateriaId'],
-      maestroDeOfertaId: json['maestroDeOfertaId'],
-      grupoMateria: GrupoMateria.fromJson(json['GrupoMateria']),
+      id: json['id'] ?? '',
+      grupoMateriaId: json['grupoMateriaId'] ?? '',
+      maestroDeOfertaId: json['maestroDeOfertaId'] ?? '',
+      grupoMateria: GrupoMateria.fromJson(json['GrupoMateria'] ?? {}),
     );
   }
 
@@ -46,11 +46,11 @@ class GrupoMateria {
 
   factory GrupoMateria.fromJson(Map<String, dynamic> json) {
     return GrupoMateria(
-      id: json['id'],
-      grupo: json['grupo'],
-      cupos: json['cupos'],
-      materia: Materia.fromJson(json['materia']),
-      docente: Docente.fromJson(json['docente']),
+      id: json['id'] ?? '',
+      grupo: json['grupo'] ?? '',
+      cupos: json['cupos'] ?? 0,
+      materia: Materia.fromJson(json['materia'] ?? {}),
+      docente: Docente.fromJson(json['docente'] ?? {}),
     );
   }
 
@@ -80,7 +80,7 @@ class Materia {
   Materia({required this.nombre});
 
   factory Materia.fromJson(Map<String, dynamic> json) {
-    return Materia(nombre: json['nombre']);
+    return Materia(nombre: json['nombre'] ?? '');
   }
 
   final String nombre;
@@ -100,8 +100,8 @@ class Docente {
 
   factory Docente.fromJson(Map<String, dynamic> json) {
     return Docente(
-      nombre: json['nombre'],
-      apellidoPaterno: json['apellido_paterno'],
+      nombre: json['nombre'] ?? '',
+      apellidoPaterno: json['apellido_paterno'] ?? '',
     );
   }
 
