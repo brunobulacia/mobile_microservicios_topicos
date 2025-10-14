@@ -3,7 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../../main.dart';
 import '../../../../data/services/idempotency_manager.dart';
-import '../../../../data/services/inscripcion_polling_service.dart';
 import '../../../../domain/models/inscripcion.dart';
 import '../../../../domain/models/oferta_grupo_materia.dart';
 import '../../../blocs/auth/auth_bloc.dart';
@@ -27,11 +26,8 @@ class _GrupoMateriaViewState extends State<GrupoMateriaView> {
   // Estado para manejar las selecciones
   Set<String> selectedGrupoMateriaIds = {};
 
-  // Variables para el polling
-  InscripcionPollingService? _pollingService;
-  String? _currentJobId;
-  bool _isInscriptionInProgress = false;
-  bool _isRefreshingCupos = false;
+  // Variables para refrescar cupos
+  final bool _isRefreshingCupos = false;
 
   // Lista de materias seleccionadas para crear la inscripción
   List<String> get selectedMateriaIds {
@@ -110,9 +106,9 @@ class _GrupoMateriaViewState extends State<GrupoMateriaView> {
             child: const Text('Cancelar'),
           ),
           TextButton(
-            onPressed: () async {
+            onPressed: () {
               Navigator.of(context).pop();
-              await _procesarInscripcion(inscripcion);
+              _navegarAProcesoInscripcion(inscripcion);
             },
             child: const Text('Confirmar'),
           ),
@@ -121,175 +117,23 @@ class _GrupoMateriaViewState extends State<GrupoMateriaView> {
     );
   }
 
-  Future<void> _procesarInscripcion(Inscripcion inscripcion) async {
+  void _navegarAProcesoInscripcion(Inscripcion inscripcion) {
+    print('🧭 Navegando a inscripción iniciada...');
+    print('📋 Datos de inscripción: ${inscripcion.toJson()}');
+
+    // Limpiar selecciones
     setState(() {
-      _isInscriptionInProgress = true;
+      selectedGrupoMateriaIds.clear();
     });
 
-    final injector = Injector.of(context);
-    final inscripcionRepository = injector.inscripcionRepository;
-
-    try {
-      // Enviar inscripción al backend
-      final jobResponse = await inscripcionRepository.inscribirMaterias(
-        inscripcion,
-      );
-
-      // Registrar la request activa
-      IdempotencyManager.registerActiveRequest(
-        inscripcion.requestId,
-        jobResponse.jobId,
-      );
-
-      setState(() {
-        _currentJobId = jobResponse.jobId;
-        selectedGrupoMateriaIds.clear(); // Limpiar selecciones
-      });
-
-      // Inicializar servicio de polling
-      _pollingService = InscripcionPollingService(inscripcionRepository);
-
-      // Mostrar dialog de progreso
-      _showProgressDialog(jobResponse.jobId);
-
-      // Iniciar polling
-      _pollingService!
-          .startPolling(jobResponse.jobId)
-          .listen(
-            (jobStatus) {
-              print(
-                '📊 Estado del job: ${jobStatus.status} - Progreso: ${jobStatus.progress}%',
-              );
-
-              if (jobStatus.isCompleted) {
-                // Completar request
-                IdempotencyManager.completeRequest(inscripcion.requestId);
-                _handleInscripcionCompleted(jobStatus);
-              } else if (jobStatus.isFailed) {
-                // Completar request (incluso si falló)
-                IdempotencyManager.completeRequest(inscripcion.requestId);
-                _handleInscripcionFailed(jobStatus);
-              }
-            },
-            onError: (error) {
-              print('❌ Error en polling: $error');
-              IdempotencyManager.completeRequest(inscripcion.requestId);
-              _handlePollingError(error);
-            },
-          );
-    } catch (e) {
-      print('❌ Error al enviar inscripción: $e');
-      setState(() {
-        _isInscriptionInProgress = false;
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('❌ Error al enviar inscripción: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
-  void _showProgressDialog(String jobId) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text('🔄 Procesando Inscripción'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const CircularProgressIndicator(),
-            const SizedBox(height: 16),
-            Text('Job ID: ${jobId.substring(0, 8)}...'),
-            const SizedBox(height: 8),
-            const Text('Tu inscripción está siendo procesada'),
-            const Text('Por favor espera...'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              // No cancelar el polling, solo cerrar el dialog
-            },
-            child: const Text('Continuar en segundo plano'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _handleInscripcionCompleted(jobStatus) async {
-    setState(() {
-      _isInscriptionInProgress = false;
-      _currentJobId = null;
+    // Navegar a la pantalla de inscripción iniciada
+    Navigator.pushNamed(
+      context,
+      Routes.inscripcionIniciada,
+      arguments: inscripcion,
+    ).then((_) {
+      print('🔙 Regresó de la pantalla de inscripción iniciada');
     });
-
-    // Cerrar dialog de progreso si está abierto
-    Navigator.of(context).popUntil((route) => route.settings.name != null);
-
-    // Refrescar los cupos después de la inscripción exitosa
-    await _refreshCuposAfterInscripcion();
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          '✅ ¡Inscripción completada exitosamente!\n🔄 Cupos actualizados',
-        ),
-        backgroundColor: Colors.green,
-        duration: Duration(seconds: 4),
-      ),
-    );
-
-    // Navegar a boleta de inscripción
-    Navigator.pushNamed(context, Routes.boletaInscripcion);
-  }
-
-  void _handleInscripcionFailed(jobStatus) async {
-    setState(() {
-      _isInscriptionInProgress = false;
-      _currentJobId = null;
-    });
-
-    // Cerrar dialog de progreso si está abierto
-    Navigator.of(context).popUntil((route) => route.settings.name != null);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          '❌ Error en la inscripción: ${jobStatus.result ?? 'Error desconocido'}',
-        ),
-        backgroundColor: Colors.red,
-        duration: const Duration(seconds: 5),
-      ),
-    );
-
-    // Refrescar los cupos incluso cuando hay error, para mantener sincronización
-    await _refreshCuposAfterInscripcion();
-  }
-
-  void _handlePollingError(dynamic error) async {
-    setState(() {
-      _isInscriptionInProgress = false;
-      _currentJobId = null;
-    });
-
-    // Cerrar dialog de progreso si está abierto
-    Navigator.of(context).popUntil((route) => route.settings.name != null);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('❌ Error de conexión: $error'),
-        backgroundColor: Colors.red,
-        duration: const Duration(seconds: 5),
-      ),
-    );
-
-    // Refrescar los cupos en caso de error de polling para mantener datos actualizados
-    await _refreshCuposAfterInscripcion();
   }
 
   @override
@@ -300,67 +144,10 @@ class _GrupoMateriaViewState extends State<GrupoMateriaView> {
 
   @override
   void dispose() {
-    // Limpiar polling service
-    _pollingService?.dispose();
     super.dispose();
   }
 
-  /// Refresca los cupos después de una inscripción
-  Future<void> _refreshCuposAfterInscripcion() async {
-    if (currentMaestroDeOfertaId == null) return;
-
-    setState(() {
-      _isRefreshingCupos = true;
-    });
-
-    try {
-      print('🔄 Refrescando cupos después de inscripción...');
-
-      final injector = Injector.of(context);
-      final ofertaGrupoMateriaRepository =
-          injector.ofertaGrupoMateriaRepository;
-
-      // Hacer que el refresh sea visible por al menos 1 segundo
-      final refreshFuture = ofertaGrupoMateriaRepository
-          .getOfertasGruposMaterias(currentMaestroDeOfertaId!);
-      final delayFuture = Future.delayed(const Duration(milliseconds: 800));
-
-      final results = await Future.wait([refreshFuture, delayFuture]);
-      final getGruposMaterias = results[0] as List<OfertaGrupoMateria>;
-
-      setState(() {
-        ofertasGrupoMateria = getGruposMaterias;
-        _isRefreshingCupos = false;
-      });
-
-      print('✅ Cupos refrescados correctamente');
-    } catch (e) {
-      print('❌ Error al refrescar cupos: $e');
-      setState(() {
-        _isRefreshingCupos = false;
-      });
-      // No mostrar error al usuario, solo loggear
-    }
-  }
-
   Widget? _buildFloatingActionButton() {
-    // Si hay una inscripción en progreso, mostrar indicador
-    if (_isInscriptionInProgress) {
-      return FloatingActionButton.extended(
-        onPressed: null, // Deshabilitado
-        icon: const SizedBox(
-          width: 16,
-          height: 16,
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-          ),
-        ),
-        label: Text('Procesando... ${_currentJobId?.substring(0, 6) ?? ''}'),
-        backgroundColor: Colors.orange,
-      );
-    }
-
     // Si hay materias seleccionadas, mostrar botón de inscripción
     if (selectedGrupoMateriaIds.isNotEmpty) {
       return FloatingActionButton.extended(

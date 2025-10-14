@@ -8,6 +8,7 @@ class JobResponse {
     required this.status,
     required this.timestamp,
     required this.loadBalancing,
+    required this.error,
   });
 
   factory JobResponse.fromJson(Map<String, dynamic> json) {
@@ -20,6 +21,7 @@ class JobResponse {
       status: json['status'] ?? '',
       timestamp: json['timestamp'] ?? '',
       loadBalancing: LoadBalancing.fromJson(json['loadBalancing'] ?? {}),
+      error: json['error'] ?? '',
     );
   }
 
@@ -31,6 +33,7 @@ class JobResponse {
   final String status;
   final String timestamp;
   final LoadBalancing loadBalancing;
+  final String? error;
 
   Map<String, dynamic> toJson() {
     return {
@@ -42,6 +45,7 @@ class JobResponse {
       'status': status,
       'timestamp': timestamp,
       'loadBalancing': loadBalancing.toJson(),
+      'error': error,
     };
   }
 }

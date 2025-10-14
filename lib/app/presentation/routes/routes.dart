@@ -6,4 +6,6 @@ class Routes {
   static const offline = '/offline';
   static const grupoMateria = '/grupo-materia';
   static const boletaInscripcion = '/boleta-inscripcion';
+  static const procesoInscripcion = '/proceso-inscripcion';
+  static const inscripcionIniciada = '/inscripcion-iniciada';
 }

@@ -8,6 +8,7 @@ class JobStatus {
     required this.processedAt,
     required this.completedAt,
     required this.result,
+    required this.error,
   });
 
   factory JobStatus.fromJson(Map<String, dynamic> json) {
@@ -20,6 +21,7 @@ class JobStatus {
       processedAt: json['processedAt'] ?? '',
       completedAt: json['completedAt'] ?? '',
       result: json['result'],
+      error: json['error'] ?? '',
     );
   }
 
@@ -31,6 +33,7 @@ class JobStatus {
   final String processedAt;
   final String completedAt;
   final dynamic result;
+  final String? error;
 
   bool get isPending => status == 'pending';
   bool get isWaiting => status == 'waiting';
@@ -48,6 +51,7 @@ class JobStatus {
       'processedAt': processedAt,
       'completedAt': completedAt,
       'result': result,
+      'error': error,
     };
   }
 }
