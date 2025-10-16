@@ -27,7 +27,7 @@ class _GrupoMateriaViewState extends State<GrupoMateriaView> {
   Set<String> selectedGrupoMateriaIds = {};
 
   // Variables para refrescar cupos
-  final bool _isRefreshingCupos = false;
+  bool _isRefreshingCupos = false;
 
   // Lista de materias seleccionadas para crear la inscripción
   List<String> get selectedMateriaIds {
@@ -133,6 +133,8 @@ class _GrupoMateriaViewState extends State<GrupoMateriaView> {
       arguments: inscripcion,
     ).then((_) {
       print('🔙 Regresó de la pantalla de inscripción iniciada');
+      // Refrescar los cupos al regresar
+      _refreshCupos();
     });
   }
 
@@ -145,6 +147,88 @@ class _GrupoMateriaViewState extends State<GrupoMateriaView> {
   @override
   void dispose() {
     super.dispose();
+  }
+
+  /// Refresca los cupos después de una inscripción
+  Future<void> _refreshCupos() async {
+    // Obtener el maestroDeOfertaId del estado de autenticación si no está disponible
+    String? maestroId = currentMaestroDeOfertaId;
+
+    if (maestroId == null) {
+      final authState = context.read<AuthBloc>().state;
+      if (authState is AuthAuthenticated &&
+          authState.user.maestroDeOferta.isNotEmpty) {
+        maestroId = authState.user.maestroDeOferta.first.id;
+      }
+    }
+
+    if (maestroId == null) return;
+
+    setState(() {
+      _isRefreshingCupos = true;
+    });
+
+    try {
+      print('🔄 Refrescando cupos después de inscripción...');
+
+      final injector = Injector.of(context);
+      final ofertaGrupoMateriaRepository =
+          injector.ofertaGrupoMateriaRepository;
+
+      // Hacer que el refresh sea visible por al menos 800ms
+      final refreshFuture = ofertaGrupoMateriaRepository
+          .getOfertasGruposMaterias(maestroId);
+      final delayFuture = Future.delayed(const Duration(milliseconds: 800));
+
+      final results = await Future.wait([refreshFuture, delayFuture]);
+      final getGruposMaterias = results[0] as List<OfertaGrupoMateria>;
+
+      setState(() {
+        ofertasGrupoMateria = getGruposMaterias;
+        _isRefreshingCupos = false;
+      });
+
+      print('✅ Cupos refrescados correctamente');
+
+      // Mostrar mensaje apropiado según el resultado
+      if (mounted) {
+        if (getGruposMaterias.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'ℹ️ No hay materias disponibles en el maestro de oferta',
+              ),
+              backgroundColor: Colors.amber,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('🔄 Cupos actualizados'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('❌ Error al refrescar cupos: $e');
+      setState(() {
+        _isRefreshingCupos = false;
+      });
+
+      // Mostrar error al usuario solo para errores reales
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Error al actualizar cupos: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
   }
 
   Widget? _buildFloatingActionButton() {
@@ -219,21 +303,26 @@ class _GrupoMateriaViewState extends State<GrupoMateriaView> {
         title: const Text('Maestro de Oferta'),
         backgroundColor: Colors.blue,
         foregroundColor: Colors.white,
-        actions: _isRefreshingCupos
-            ? [
-                const Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    ),
-                  ),
+        actions: [
+          if (_isRefreshingCupos)
+            const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                 ),
-              ]
-            : null,
+              ),
+            )
+          else
+            IconButton(
+              onPressed: _refreshCupos,
+              icon: const Icon(Icons.refresh),
+              tooltip: 'Actualizar cupos',
+            ),
+        ],
       ),
       body: BlocBuilder<AuthBloc, AuthState>(
         builder: (context, authState) {
@@ -355,11 +444,21 @@ class _GrupoMateriaViewState extends State<GrupoMateriaView> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.inbox_outlined, size: 64, color: Colors.grey),
+            Icon(Icons.info_outline, size: 64, color: Colors.amber),
             SizedBox(height: 16),
             Text(
-              'No se encontraron grupos de materias',
-              style: TextStyle(fontSize: 18, color: Colors.grey),
+              'No hay materias disponibles',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey,
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'No se encontraron grupos de materias en el maestro de oferta actual',
+              style: TextStyle(fontSize: 14, color: Colors.grey),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
