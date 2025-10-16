@@ -275,7 +275,7 @@ class _ProcesoInscripcionState extends State<ProcesoInscripcion> {
               const SizedBox(height: 32),
 
               // Job ID
-              if (_currentJobId != null) ...[
+              /* if (_currentJobId != null) ...[
                 Text(
                   'Job ID: ${_currentJobId!.substring(0, 8)}...',
                   style: TextStyle(
@@ -285,7 +285,7 @@ class _ProcesoInscripcionState extends State<ProcesoInscripcion> {
                   ),
                 ),
                 const SizedBox(height: 16),
-              ],
+              ], */
 
               // Mensaje de estado
               Text(

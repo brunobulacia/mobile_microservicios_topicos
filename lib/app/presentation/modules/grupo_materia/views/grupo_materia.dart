@@ -465,6 +465,38 @@ class _GrupoMateriaViewState extends State<GrupoMateriaView> {
       );
     }
 
+    // Filtrar solo las materias con cupos disponibles (cupos > 0)
+    final ofertasConCupos = ofertasGrupoMateria!
+        .where((oferta) => oferta.grupoMateria.cupos > 0)
+        .toList();
+
+    // Si no hay materias con cupos disponibles, mostrar mensaje específico
+    if (ofertasConCupos.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.event_busy, size: 64, color: Colors.orange),
+            SizedBox(height: 16),
+            Text(
+              'No hay cupos disponibles',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey,
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Todas las materias están llenas en este momento',
+              style: TextStyle(fontSize: 14, color: Colors.grey),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+
     // Lista con scroll optimizado
     return Column(
       children: [
@@ -477,7 +509,7 @@ class _GrupoMateriaViewState extends State<GrupoMateriaView> {
             border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
           ),
           child: Text(
-            'Grupos Disponibles (${ofertasGrupoMateria!.length}):',
+            'Grupos Disponibles (${ofertasConCupos.length}):',
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
         ),
@@ -485,9 +517,9 @@ class _GrupoMateriaViewState extends State<GrupoMateriaView> {
         Expanded(
           child: ListView.builder(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            itemCount: ofertasGrupoMateria!.length,
+            itemCount: ofertasConCupos.length,
             itemBuilder: (context, index) {
-              final oferta = ofertasGrupoMateria![index];
+              final oferta = ofertasConCupos[index];
               final grupoMateriaId = oferta.grupoMateria.id;
               final isSelected = selectedGrupoMateriaIds.contains(
                 grupoMateriaId,
