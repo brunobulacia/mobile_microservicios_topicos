@@ -14,9 +14,142 @@ class BoletaInscripcionView extends StatefulWidget {
 }
 
 class _BoletaInscripcionViewState extends State<BoletaInscripcionView> {
+  String? error;
   List<BoletaInscripcion>? boletaData;
   bool isLoading = true;
-  String? error;
+
+  String _formatDate(DateTime date) {
+    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // No llamamos _loadBoletaInscripcion aquí porque ahora depende del estado de auth
+  }
+
+  Future<void> _loadBoletaInscripcion(String estudianteId) async {
+    try {
+      setState(() {
+        isLoading = true;
+        error = null;
+      });
+
+      final injector = Injector.of(context);
+      final boletaInscripcionRepository = injector.boletaInscripcionRepository;
+      final ofertaGrupoMateriaRepository =
+          injector.ofertaGrupoMateriaRepository;
+
+      final response = await boletaInscripcionRepository
+          .obtenerMateriasInscritasEstudiante(estudianteId);
+
+      print('Boleta de inscripción cargada: $response');
+
+      setState(() {
+        boletaData = response;
+        isLoading = false;
+      });
+    } catch (e) {
+      print('Error al cargar la boleta de inscripción: $e');
+      setState(() {
+        error = e.toString();
+        isLoading = false;
+      });
+    }
+  }
+
+  Future<void> loadBoletaInscripcion(String estudianteId) async {
+    try {
+      setState(() {
+        isLoading = true;
+        error = null;
+      });
+
+      final injector = Injector.of(context);
+      final boletaInscripcionRepository = injector.boletaInscripcionRepository;
+      final ofertaGrupoMateriaRepository =
+          injector.ofertaGrupoMateriaRepository;
+
+      final response = await boletaInscripcionRepository
+          .obtenerMateriasInscritasEstudiante(estudianteId);
+
+      print('Boleta de inscripción cargada: $response');
+
+      setState(() {
+        boletaData = response;
+        isLoading = false;
+      });
+    } catch (e) {
+      print('Error al cargar la boleta de inscripción: $e');
+      setState(() {
+        error = e.toString();
+        isLoading = false;
+      });
+    }
+  }
+
+  Widget buildSummaryCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, color: color, size: 24),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey[600],
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget buildModernChip(String text, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.2)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 4),
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,22 +160,18 @@ class _BoletaInscripcionViewState extends State<BoletaInscripcionView> {
           'Boleta de Inscripción',
           style: TextStyle(fontWeight: FontWeight.w600),
         ),
-        backgroundColor: Colors.blue[700],
-        foregroundColor: Colors.white,
-        elevation: 0,
         centerTitle: true,
       ),
       body: BlocBuilder<AuthBloc, AuthState>(
         builder: (context, authState) {
           if (authState is AuthAuthenticated) {
             final user = authState.user;
-            final registro =
-                user.matricula; // Usar matrícula del usuario autenticado
+            final id = user.id; // Usar matrícula del usuario autenticado
 
             // Inicializar datos si es necesario
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (boletaData == null && isLoading) {
-                _loadBoletaInscripcion(registro);
+                _loadBoletaInscripcion(id);
               }
             });
 
@@ -121,7 +250,7 @@ class _BoletaInscripcionViewState extends State<BoletaInscripcionView> {
                   // Obtener el registro del usuario actual para reintentar
                   final authState = context.read<AuthBloc>().state;
                   if (authState is AuthAuthenticated) {
-                    _loadBoletaInscripcion(authState.user.matricula);
+                    loadBoletaInscripcion(authState.user.id);
                   }
                 },
                 child: const Text('Reintentar'),
@@ -148,10 +277,10 @@ class _BoletaInscripcionViewState extends State<BoletaInscripcionView> {
       );
     }
 
-    // Aquí mostraremos los datos cuando estén disponibles
+    // Mostrar boleta de inscripción con diseño moderno
     return Column(
       children: [
-        // Header con información general
+        // Header con información general (puedes agregar resumen si lo deseas)
         Container(
           width: double.infinity,
           decoration: BoxDecoration(
@@ -165,57 +294,43 @@ class _BoletaInscripcionViewState extends State<BoletaInscripcionView> {
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 30),
             child: Column(
               children: [
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
+                Text(
+                  'Materias Inscritas',
+                  style: TextStyle(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _buildSummaryCard(
-                        'Materias',
-                        boletaData!.length.toString(),
-                        Icons.book,
-                        Colors.blue[600]!,
-                      ),
-                      Container(width: 1, height: 40, color: Colors.grey[300]),
-                      _buildSummaryCard(
-                        'Créditos',
-                        _calculateTotalCredits().toString(),
-                        Icons.star,
-                        Colors.orange[600]!,
-                      ),
-                      Container(width: 1, height: 40, color: Colors.grey[300]),
-                      _buildSummaryCard(
-                        'Promedio',
-                        _calculateAverage().toStringAsFixed(1),
-                        Icons.trending_up,
-                        _getAverageColor(),
-                      ),
-                    ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Total: ${boletaData!.length}',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.9),
+                    fontSize: 15,
                   ),
                 ),
               ],
             ),
           ),
         ),
-        // Lista de materias
+        // Lista de materias inscritas
         Expanded(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: ListView.builder(
               itemCount: boletaData!.length,
               itemBuilder: (context, index) {
                 final inscripcion = boletaData![index];
+                final materia = inscripcion.materia;
+                final docente = inscripcion.docente;
+                final aula = inscripcion.aulaGrupoMateria.isNotEmpty
+                    ? inscripcion.aulaGrupoMateria.first.aula
+                    : null;
+                final horarios = inscripcion.aulaGrupoMateria.isNotEmpty
+                    ? inscripcion.aulaGrupoMateria.first.horario
+                    : <dynamic>[];
+
                 return Container(
                   margin: const EdgeInsets.only(bottom: 16),
                   decoration: BoxDecoration(
@@ -234,8 +349,8 @@ class _BoletaInscripcionViewState extends State<BoletaInscripcionView> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Header de la materia
                         Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Container(
                               padding: const EdgeInsets.all(8),
@@ -255,77 +370,127 @@ class _BoletaInscripcionViewState extends State<BoletaInscripcionView> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    inscripcion.grupoMateria.materia.nombre,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleMedium
-                                        ?.copyWith(
-                                          fontWeight: FontWeight.w600,
-                                          color: Colors.grey[800],
-                                        ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    inscripcion.grupoMateria.materia.sigla,
+                                    materia.sigla,
                                     style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.grey[600],
-                                      fontWeight: FontWeight.w500,
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.blue[700],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    materia.nombre,
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                            // Nota con color
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: inscripcion.nota >= 51
-                                    ? Colors.green[50]
-                                    : Colors.red[50],
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: inscripcion.nota >= 51
-                                      ? Colors.green[200]!
-                                      : Colors.red[200]!,
-                                ),
-                              ),
+                            // Puedes agregar aquí un chip de estado, nota, etc.
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.person,
+                              size: 18,
+                              color: Colors.blue.shade400,
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
                               child: Text(
-                                inscripcion.nota.toString(),
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                  color: inscripcion.nota >= 51
-                                      ? Colors.green[700]
-                                      : Colors.red[700],
+                                '${docente.nombre} ${docente.apellidoPaterno}',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
                                 ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Icon(
+                              Icons.group,
+                              size: 18,
+                              color: Colors.blue.shade400,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              inscripcion.grupo,
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.class_,
+                              size: 18,
+                              color: Colors.blue.shade400,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Aula ${aula != null ? aula.numero.toString() : '-'}',
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                            const SizedBox(width: 16),
+                            Icon(
+                              Icons.people,
+                              size: 18,
+                              color: Colors.blue.shade400,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${inscripcion.inscritos}/${inscripcion.cupos}',
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(
+                              Icons.schedule,
+                              size: 18,
+                              color: Colors.blue.shade400,
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                horarios.isNotEmpty
+                                    ? horarios
+                                          .map(
+                                            (h) =>
+                                                '${h.diaSemana} ${h.horaInicio}-${h.horaFin}',
+                                          )
+                                          .join(', ')
+                                    : '-',
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.black87,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 16),
-                        // Información adicional
+                        const SizedBox(height: 6),
                         Row(
                           children: [
-                            _buildModernChip(
-                              'Grupo ${inscripcion.grupoMateria.grupo}',
-                              Icons.group,
-                              Colors.orange,
+                            Icon(
+                              Icons.calendar_today,
+                              size: 16,
+                              color: Colors.blue.shade400,
                             ),
-                            const SizedBox(width: 8),
-                            _buildModernChip(
-                              '${inscripcion.grupoMateria.materia.creditos} Créditos',
-                              Icons.star_border,
-                              Colors.blue,
-                            ),
-                            const SizedBox(width: 8),
-                            _buildModernChip(
-                              '${inscripcion.grupoMateria.materia.nivel.semestre}° Sem',
-                              Icons.timeline,
-                              Colors.teal,
+                            const SizedBox(width: 6),
+                            Text(
+                              'Inscrito el: ${_formatDate(inscripcion.createdAt)}',
+                              style: const TextStyle(fontSize: 13),
                             ),
                           ],
                         ),
@@ -339,126 +504,5 @@ class _BoletaInscripcionViewState extends State<BoletaInscripcionView> {
         ),
       ],
     );
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    // No llamamos _loadBoletaInscripcion aquí porque ahora depende del estado de auth
-  }
-
-  Future<void> _loadBoletaInscripcion(String registro) async {
-    try {
-      setState(() {
-        isLoading = true;
-        error = null;
-      });
-
-      final injector = Injector.of(context);
-      final boletaInscripcionRepository = injector.boletaInscripcionRepository;
-
-      final response = await boletaInscripcionRepository
-          .obtenerMateriasInscritasEstudiante(registro);
-
-      print('✅ Boleta cargada: $response');
-
-      setState(() {
-        boletaData = response;
-        isLoading = false;
-      });
-    } catch (e) {
-      print('❌ Error al cargar la boleta de inscripción: $e');
-      setState(() {
-        error = e.toString();
-        isLoading = false;
-      });
-    }
-  }
-
-  Widget _buildSummaryCard(
-    String title,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(icon, color: color, size: 24),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: color,
-          ),
-        ),
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey[600],
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildModernChip(String text, IconData icon, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.2)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: color),
-          const SizedBox(width: 4),
-          Text(
-            text,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: color,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  int _calculateTotalCredits() {
-    if (boletaData == null) return 0;
-    return boletaData!.fold(
-      0,
-      (sum, inscripcion) => sum + inscripcion.grupoMateria.materia.creditos,
-    );
-  }
-
-  double _calculateAverage() {
-    if (boletaData == null || boletaData!.isEmpty) return 0.0;
-    final totalNota = boletaData!.fold(
-      0,
-      (sum, inscripcion) => sum + inscripcion.nota,
-    );
-    return totalNota / boletaData!.length;
-  }
-
-  Color _getAverageColor() {
-    final average = _calculateAverage();
-    if (average >= 70) return Colors.green[600]!;
-    if (average >= 51) return Colors.orange[600]!;
-    return Colors.red[600]!;
   }
 }

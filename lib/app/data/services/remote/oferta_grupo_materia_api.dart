@@ -13,7 +13,7 @@ class OfertaGrupoMateriaApi {
   ) async {
     try {
       final response = await _dio.get(
-        '$baseUrl/oferta-grupo-materias/$maestroDeOfertaId/',
+        '$baseUrl/ofertas-grupo-materia/maestro/$maestroDeOfertaId/',
       );
 
       if (response.statusCode == 200) {
@@ -30,7 +30,6 @@ class OfertaGrupoMateriaApi {
         // Devolver una lista vacía en lugar de lanzar una excepción
         return [];
       }
-      // Para cualquier otro error, relanzar la excepción
       rethrow;
     }
   }

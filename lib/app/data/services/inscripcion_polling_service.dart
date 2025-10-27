@@ -52,7 +52,8 @@ class InscripcionPollingService {
         }
 
         // Si el job está completado o falló, detener el polling
-        if (status.isCompleted || status.isFailed) {
+        if (status.status == Status.completed ||
+            status.status == Status.failed) {
           stopPolling(jobId);
         }
       } catch (e) {

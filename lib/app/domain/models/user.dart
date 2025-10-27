@@ -7,7 +7,7 @@ class User {
     required this.telefono,
     required this.ci,
     required this.email,
-    required this.matricula,
+    required this.registro,
     required this.ppac,
     required this.maestroDeOferta,
   });
@@ -21,7 +21,7 @@ class User {
       telefono: json['telefono'] ?? '',
       ci: json['ci'] ?? '',
       email: json['email'] ?? '',
-      matricula: json['matricula'] ?? '',
+      registro: json['registro'] ?? '',
       ppac: json['ppac'] ?? 0,
       maestroDeOferta: (json['MaestroDeOferta'] as List? ?? [])
           .map((e) => MaestroDeOferta.fromJson(e))
@@ -35,7 +35,7 @@ class User {
   final String telefono;
   final String ci;
   final String email;
-  final String matricula;
+  final String registro;
   final int ppac;
   final List<MaestroDeOferta> maestroDeOferta;
 
@@ -48,7 +48,7 @@ class User {
       'telefono': telefono,
       'ci': ci,
       'email': email,
-      'matricula': matricula,
+      'registro': registro,
       'ppac': ppac,
       'MaestroDeOferta': maestroDeOferta.map((e) => e.toJson()).toList(),
     };

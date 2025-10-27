@@ -6,10 +6,10 @@ class AuthenticationApi {
   AuthenticationApi(this._dio);
   final Dio _dio;
 
-  Future<Map<String, dynamic>> signIn(String username, String password) async {
+  Future<Map<String, dynamic>> signIn(String registro, String password) async {
     final response = await _dio.post(
       '$baseUrl/auth/login',
-      data: {'matricula': username, 'password': password},
+      data: {'registro': registro, 'password': password},
     );
     return response.data;
   }

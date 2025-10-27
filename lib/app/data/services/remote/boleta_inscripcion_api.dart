@@ -8,16 +8,16 @@ class BoletaInscripcionApi {
   final Dio _dio;
 
   Future<List<BoletaInscripcion>> obtenerMateriasInscritasEstudiante(
-    String matricula,
+    String estudianteId,
   ) async {
     final response = await _dio.get(
-      '$baseUrl/boleta-grupo-materias/$matricula/',
+      '$baseUrl/boletas-inscripcion/estudiante/$estudianteId/',
     );
 
     if (response.statusCode == 200) {
       final List<dynamic> data = response.data;
       return data
-          .map((item) => BoletaInscripcion.fromMap(item))
+          .map((item) => BoletaInscripcion.fromJson(item))
           .toList(growable: false);
     } else {
       throw Exception('Fallo al cargar las materias inscritas');

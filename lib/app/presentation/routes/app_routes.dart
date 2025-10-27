@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../domain/models/inscripcion.dart';
+import '../../domain/models/job_response.dart';
 import '../modules/boleta_inscripcion/views/boleta_inscripcion.dart';
 import '../modules/grupo_materia/views/grupo_materia.dart';
 import '../modules/home/views/home_view.dart';
@@ -20,19 +20,19 @@ Map<String, Widget Function(BuildContext)> get appRoutes {
     Routes.grupoMateria: (context) => const GrupoMateriaView(),
     Routes.boletaInscripcion: (context) => const BoletaInscripcionView(),
     Routes.inscripcionIniciada: (context) {
-      final inscripcion =
-          ModalRoute.of(context)!.settings.arguments as Inscripcion;
-      return InscripcionIniciadaView(inscripcion: inscripcion);
+      final jobResponse =
+          ModalRoute.of(context)!.settings.arguments as JobResponse;
+      return InscripcionIniciadaView(jobResponse: jobResponse);
     },
     Routes.procesoInscripcion: (context) {
-      print('🛣️ Ruta procesoInscripcion llamada');
+      print('Ruta procesoInscripcion llamada');
       final route = ModalRoute.of(context);
-      print('📦 Route arguments: ${route?.settings.arguments}');
+      print('Route arguments: ${route?.settings.arguments}');
 
-      final inscripcion = route!.settings.arguments as Inscripcion;
-      print('✅ Inscripción convertida correctamente: ${inscripcion.toJson()}');
+      final jobId = route!.settings.arguments as String;
+      print('JobId recibido correctamente: $jobId');
 
-      return ProcesoInscripcion(inscripcion: inscripcion);
+      return ProcesoInscripcion(jobId: jobId);
     },
   };
 }

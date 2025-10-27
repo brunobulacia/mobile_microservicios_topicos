@@ -8,10 +8,10 @@ class BoletaInscripcionRepositoryImpl implements BoletaInscripcionRepository {
   final BoletaInscripcionApi _boletaInscripcionApi;
   @override
   Future<List<BoletaInscripcion>> obtenerMateriasInscritasEstudiante(
-    String matricula,
+    String boletaId,
   ) {
     final response = _boletaInscripcionApi.obtenerMateriasInscritasEstudiante(
-      matricula,
+      boletaId,
     );
     return response;
   }

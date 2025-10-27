@@ -1,14 +1,21 @@
 import 'package:flutter/material.dart';
 
-import '../../../../domain/models/inscripcion.dart';
+import '../../../../domain/models/job_response.dart';
 import '../../../routes/routes.dart';
 
-class InscripcionIniciadaView extends StatelessWidget {
-  const InscripcionIniciadaView({super.key, required this.inscripcion});
-  final Inscripcion inscripcion;
+class InscripcionIniciadaView extends StatefulWidget {
+  const InscripcionIniciadaView({super.key, required this.jobResponse});
+  final JobResponse jobResponse;
 
   @override
+  State<InscripcionIniciadaView> createState() =>
+      _InscripcionIniciadaViewState();
+}
+
+class _InscripcionIniciadaViewState extends State<InscripcionIniciadaView> {
+  @override
   Widget build(BuildContext context) {
+    final job = widget.jobResponse;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Inscripción Iniciada'),
@@ -19,8 +26,7 @@ class InscripcionIniciadaView extends StatelessWidget {
         padding: const EdgeInsets.all(24.0),
         child: Column(
           children: [
-            const SizedBox(height: 40), // Espacio superior
-            // Icono de éxito
+            const SizedBox(height: 40),
             Container(
               width: 120,
               height: 120,
@@ -34,32 +40,23 @@ class InscripcionIniciadaView extends StatelessWidget {
                 color: Colors.green,
               ),
             ),
-
             const SizedBox(height: 32),
-
-            // Título
-            const Text(
-              '¡Inscripción Iniciada!',
-              style: TextStyle(
+            Text(
+              '¡Inscripción Enviada!',
+              style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
                 color: Colors.green,
               ),
               textAlign: TextAlign.center,
             ),
-
             const SizedBox(height: 16),
-
-            // Mensaje
-            const Text(
-              'Tu solicitud de inscripción ha sido enviada exitosamente.',
-              style: TextStyle(fontSize: 16, color: Colors.grey),
+            Text(
+              job.message,
+              style: const TextStyle(fontSize: 16, color: Colors.grey),
               textAlign: TextAlign.center,
             ),
-
             const SizedBox(height: 32),
-
-            // Información de la inscripción
             Card(
               elevation: 2,
               child: Padding(
@@ -68,7 +65,7 @@ class InscripcionIniciadaView extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Detalles de tu Inscripción',
+                      'Detalles del Proceso',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -76,25 +73,23 @@ class InscripcionIniciadaView extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    _buildDetailRow('Registro:', inscripcion.registro),
-                    const SizedBox(height: 12),
+                    _buildDetailRow('Job ID:', job.jobId),
+                    const SizedBox(height: 8),
+                    _buildDetailRow('Cola:', job.colaName),
+                    const SizedBox(height: 8),
+                    _buildDetailRow('Queue:', job.queueName),
+                    const SizedBox(height: 8),
+                    _buildDetailRow('Registro:', job.registro),
+                    const SizedBox(height: 8),
                     _buildDetailRow(
-                      'Materias seleccionadas:',
-                      '${inscripcion.materiasId.length}',
-                    ),
-                    const SizedBox(height: 12),
-                    _buildDetailRow(
-                      'Request ID:',
-                      '${inscripcion.requestId.substring(0, 8)}...',
+                      'Trabajadores disponibles:',
+                      job.workersAvailable.toString(),
                     ),
                   ],
                 ),
               ),
             ),
-
             const SizedBox(height: 40),
-
-            // Mensaje informativo
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -109,16 +104,16 @@ class InscripcionIniciadaView extends StatelessWidget {
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
+                      children: const [
+                        Text(
                           'Próximo paso',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             color: Colors.blue,
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        const Text(
+                        SizedBox(height: 4),
+                        Text(
                           'Puedes monitorear el progreso de tu inscripción en tiempo real.',
                           style: TextStyle(color: Colors.blue),
                         ),
@@ -128,10 +123,7 @@ class InscripcionIniciadaView extends StatelessWidget {
                 ],
               ),
             ),
-
             const SizedBox(height: 32),
-
-            // Botones de acción
             Column(
               children: [
                 SizedBox(
@@ -141,7 +133,7 @@ class InscripcionIniciadaView extends StatelessWidget {
                       Navigator.pushNamed(
                         context,
                         Routes.procesoInscripcion,
-                        arguments: inscripcion,
+                        arguments: job.jobId,
                       );
                     },
                     icon: const Icon(Icons.visibility),
@@ -154,9 +146,7 @@ class InscripcionIniciadaView extends StatelessWidget {
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 12),
-
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
@@ -173,8 +163,7 @@ class InscripcionIniciadaView extends StatelessWidget {
                 ),
               ],
             ),
-
-            const SizedBox(height: 40), // Espacio inferior
+            const SizedBox(height: 40),
           ],
         ),
       ),

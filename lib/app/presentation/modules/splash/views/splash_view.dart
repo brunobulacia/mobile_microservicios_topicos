@@ -28,7 +28,7 @@ class _SplashViewState extends State<SplashView> {
     final connectivityRepository = injector.connectivityRepository;
 
     final hasInternet = await connectivityRepository.hasInternet;
-    print('✅ hasInternet: $hasInternet');
+    print('hasInternet: $hasInternet');
 
     if (hasInternet) {
       // Usar Bloc para verificar el estado de autenticación

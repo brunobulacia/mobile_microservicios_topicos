@@ -25,7 +25,7 @@ class InscripcionApi {
   }
 
   Future<JobStatus> consultarEstadoInscripcion(String jobId) async {
-    final response = await _dio.get('$baseUrl/colas/jobs/$jobId/status');
+    final response = await _dio.get('$baseUrl/inscripcion/job-status/$jobId/');
 
     if (response.statusCode == 200) {
       return JobStatus.fromJson(Map<String, dynamic>.from(response.data));

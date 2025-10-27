@@ -57,7 +57,7 @@ class HomeView extends StatelessWidget {
                               style: Theme.of(context).textTheme.titleMedium,
                             ),
                             const SizedBox(height: 8),
-                            Text('Matrícula: ${state.user.matricula}'),
+                            Text('Registro: ${state.user.registro}'),
                             Text('PPAC: ${state.user.ppac}'),
                           ],
                         ),

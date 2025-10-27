@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../../main.dart';
-import '../../../../data/services/idempotency_manager.dart';
 import '../../../../domain/models/inscripcion.dart';
 import '../../../../domain/models/oferta_grupo_materia.dart';
 import '../../../blocs/auth/auth_bloc.dart';
@@ -24,119 +23,27 @@ class _GrupoMateriaViewState extends State<GrupoMateriaView> {
   String? currentMaestroDeOfertaId;
 
   // Estado para manejar las selecciones
-  Set<String> selectedGrupoMateriaIds = {};
+  // Ahora almacena los IDs de OfertaGrupoMateria (oferta.id)
+  Set<String> selectedOfertaGrupoMateriaIds = {};
 
   // Variables para refrescar cupos
   bool _isRefreshingCupos = false;
 
-  // Lista de materias seleccionadas para crear la inscripción
-  List<String> get selectedMateriaIds {
-    if (ofertasGrupoMateria == null) return [];
-    return ofertasGrupoMateria!
-        .where(
-          (oferta) => selectedGrupoMateriaIds.contains(oferta.grupoMateria.id),
-        )
-        .map((oferta) => oferta.grupoMateria.id)
-        .toList();
-  }
-
-  void _crearInscripcion(String registro) {
-    if (selectedGrupoMateriaIds.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('⚠️ Selecciona al menos una materia'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
-    // Crear el modelo de inscripción temporal para generar requestId
-    final tempInscripcion = Inscripcion(
-      registro: registro,
-      materiasId: selectedMateriaIds,
-      requestId: '', // Temporal
-    );
-
-    // Generar requestId basado en el contenido
-    final requestId = IdempotencyManager.generateRequestId(tempInscripcion);
-
-    // Verificar si ya hay una inscripción en progreso
-    if (IdempotencyManager.hasActiveRequest(requestId)) {
-      final jobId = IdempotencyManager.getJobIdForRequest(requestId);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '⚠️ Ya hay una inscripción similar en progreso (Job ID: ${jobId?.substring(0, 8)}...)',
-          ),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
-    // Crear la inscripción final con requestId
-    final inscripcion = Inscripcion(
-      registro: registro,
-      materiasId: selectedMateriaIds,
-      requestId: requestId,
-    );
-
-    // Mostrar confirmación
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('🎓 Confirmar Inscripción'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Registro: ${inscripcion.registro}'),
-            const SizedBox(height: 8),
-            Text('Materias seleccionadas: ${inscripcion.materiasId.length}'),
-            const SizedBox(height: 8),
-            const Text('⚠️ Esta inscripción se procesará de forma asíncrona'),
-            const SizedBox(height: 4),
-            const Text('Podrás ver el progreso en tiempo real'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancelar'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              _navegarAProcesoInscripcion(inscripcion);
-            },
-            child: const Text('Confirmar'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _navegarAProcesoInscripcion(Inscripcion inscripcion) {
-    print('🧭 Navegando a inscripción iniciada...');
-    print('📋 Datos de inscripción: ${inscripcion.toJson()}');
-
-    // Limpiar selecciones
-    setState(() {
-      selectedGrupoMateriaIds.clear();
-    });
-
-    // Navegar a la pantalla de inscripción iniciada
-    Navigator.pushNamed(
-      context,
-      Routes.inscripcionIniciada,
-      arguments: inscripcion,
-    ).then((_) {
-      print('🔙 Regresó de la pantalla de inscripción iniciada');
-      // Refrescar los cupos al regresar
-      _refreshCupos();
-    });
-  }
+  // void _navegarAProcesoInscripcion(Inscripcion inscripcion) {
+  //   print('Navegando a inscripción iniciada...');
+  //   print('Datos de inscripción: ${inscripcion.toJson()}');
+  //   setState(() {
+  //     selectedOfertaGrupoMateriaIds.clear();
+  //   });
+  //   Navigator.pushNamed(
+  //     context,
+  //     Routes.inscripcionIniciada,
+  //     arguments: inscripcion,
+  //   ).then((_) {
+  //     print('Regresó de la pantalla de inscripción iniciada');
+  //     _refreshCupos();
+  //   });
+  // }
 
   @override
   void initState() {
@@ -169,7 +76,7 @@ class _GrupoMateriaViewState extends State<GrupoMateriaView> {
     });
 
     try {
-      print('🔄 Refrescando cupos después de inscripción...');
+      print('Refrescando cupos después de inscripción...');
 
       final injector = Injector.of(context);
       final ofertaGrupoMateriaRepository =
@@ -188,41 +95,29 @@ class _GrupoMateriaViewState extends State<GrupoMateriaView> {
         _isRefreshingCupos = false;
       });
 
-      print('✅ Cupos refrescados correctamente');
+      print('Cupos refrescados correctamente');
 
-      // Mostrar mensaje apropiado según el resultado
+      // Mostrar mensaje de éxito
       if (mounted) {
-        if (getGruposMaterias.isEmpty) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'ℹ️ No hay materias disponibles en el maestro de oferta',
-              ),
-              backgroundColor: Colors.amber,
-              duration: Duration(seconds: 3),
-            ),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('🔄 Cupos actualizados'),
-              backgroundColor: Colors.green,
-              duration: Duration(seconds: 2),
-            ),
-          );
-        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Cupos actualizados'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
       }
     } catch (e) {
-      print('❌ Error al refrescar cupos: $e');
+      print('Error al refrescar cupos: $e');
       setState(() {
         _isRefreshingCupos = false;
       });
 
-      // Mostrar error al usuario solo para errores reales
+      // Mostrar error al usuario
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('❌ Error al actualizar cupos: $e'),
+            content: Text('Error al actualizar cupos: $e'),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 3),
           ),
@@ -232,22 +127,53 @@ class _GrupoMateriaViewState extends State<GrupoMateriaView> {
   }
 
   Widget? _buildFloatingActionButton() {
-    // Si hay materias seleccionadas, mostrar botón de inscripción
-    if (selectedGrupoMateriaIds.isNotEmpty) {
+    if (selectedOfertaGrupoMateriaIds.isNotEmpty) {
       return FloatingActionButton.extended(
-        onPressed: () {
+        onPressed: () async {
           final authState = context.read<AuthBloc>().state;
           if (authState is AuthAuthenticated) {
-            _crearInscripcion(authState.user.matricula);
+            final injector = Injector.of(context);
+            final inscripcionRepository = injector.inscripcionRepository;
+            // Crear objeto Inscripcion con los IDs seleccionados y datos del usuario
+            final inscripcion = Inscripcion(
+              registro: authState.user.registro,
+              ofertaId: selectedOfertaGrupoMateriaIds.toList(),
+            );
+            print(
+              'Intentando inscribir con ofertaId: ${selectedOfertaGrupoMateriaIds.toList()}',
+            );
+            print('Objeto Inscripcion enviado: ${inscripcion.toJson()}');
+            try {
+              final jobResponse = await inscripcionRepository.inscribirMaterias(
+                inscripcion,
+              );
+              setState(() {
+                selectedOfertaGrupoMateriaIds.clear();
+              });
+              if (mounted) {
+                Navigator.pushNamed(
+                  context,
+                  Routes.inscripcionIniciada,
+                  arguments: jobResponse,
+                ).then((_) => _refreshCupos());
+              }
+            } catch (e) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Error al inscribir: $e'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            }
           }
         },
         icon: const Icon(Icons.add),
-        label: Text('Inscribir (${selectedGrupoMateriaIds.length})'),
+        label: Text('Inscribir (${selectedOfertaGrupoMateriaIds.length})'),
         backgroundColor: Colors.green,
       );
     }
-
-    // Si no hay nada seleccionado, no mostrar botón
     return null;
   }
 
@@ -265,14 +191,14 @@ class _GrupoMateriaViewState extends State<GrupoMateriaView> {
       final getGruposMaterias = await ofertaGrupoMateriaRepository
           .getOfertasGruposMaterias(maestroDeOfertaId);
 
-      // print('✅ getGruposMaterias: $getGruposMaterias');
+      print('getGruposMaterias: $getGruposMaterias');
 
       setState(() {
         ofertasGrupoMateria = getGruposMaterias;
         isLoading = false;
       });
     } catch (e) {
-      print('❌ Error fetching data: $e');
+      print('Error fetching data: $e');
       setState(() {
         error = e.toString();
         isLoading = false;
@@ -348,6 +274,7 @@ class _GrupoMateriaViewState extends State<GrupoMateriaView> {
 
             // Obtener el primer maestroDeOfertaId
             final maestroDeOfertaId = user.maestroDeOferta.first.id;
+            print('MaestroDeOfertaId: $maestroDeOfertaId');
 
             // Inicializar datos si es necesario o si cambió el maestroDeOfertaId
             if (currentMaestroDeOfertaId != maestroDeOfertaId) {
@@ -419,14 +346,14 @@ class _GrupoMateriaViewState extends State<GrupoMateriaView> {
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Colors.red[700],
+                  color: Colors.red,
                 ),
               ),
               const SizedBox(height: 8),
               Text(
                 error!,
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.red[600]),
+                style: TextStyle(color: Colors.red),
               ),
               const SizedBox(height: 16),
               ElevatedButton(
@@ -444,53 +371,11 @@ class _GrupoMateriaViewState extends State<GrupoMateriaView> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.info_outline, size: 64, color: Colors.amber),
+            Icon(Icons.inbox_outlined, size: 64, color: Colors.grey),
             SizedBox(height: 16),
             Text(
-              'No hay materias disponibles',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey,
-              ),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'No se encontraron grupos de materias en el maestro de oferta actual',
-              style: TextStyle(fontSize: 14, color: Colors.grey),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      );
-    }
-
-    // Filtrar solo las materias con cupos disponibles (cupos > 0)
-    final ofertasConCupos = ofertasGrupoMateria!
-        .where((oferta) => oferta.grupoMateria.cupos > 0)
-        .toList();
-
-    // Si no hay materias con cupos disponibles, mostrar mensaje específico
-    if (ofertasConCupos.isEmpty) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.event_busy, size: 64, color: Colors.orange),
-            SizedBox(height: 16),
-            Text(
-              'No hay cupos disponibles',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey,
-              ),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Todas las materias están llenas en este momento',
-              style: TextStyle(fontSize: 14, color: Colors.grey),
-              textAlign: TextAlign.center,
+              'No se encontraron grupos de materias',
+              style: TextStyle(fontSize: 18, color: Colors.grey),
             ),
           ],
         ),
@@ -509,7 +394,7 @@ class _GrupoMateriaViewState extends State<GrupoMateriaView> {
             border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
           ),
           child: Text(
-            'Grupos Disponibles (${ofertasConCupos.length}):',
+            'Grupos Disponibles (${ofertasGrupoMateria!.length}):',
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
         ),
@@ -517,31 +402,47 @@ class _GrupoMateriaViewState extends State<GrupoMateriaView> {
         Expanded(
           child: ListView.builder(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            itemCount: ofertasConCupos.length,
+            itemCount: ofertasGrupoMateria!.length,
             itemBuilder: (context, index) {
-              final oferta = ofertasConCupos[index];
-              final grupoMateriaId = oferta.grupoMateria.id;
-              final isSelected = selectedGrupoMateriaIds.contains(
-                grupoMateriaId,
-              );
+              final oferta = ofertasGrupoMateria![index];
+              final detalle = oferta.detalleGrupoMateria;
+              final materia = detalle.materia;
+              final docente = detalle.docente;
+              final aula = detalle.aulaGrupoMateria.isNotEmpty
+                  ? detalle.aulaGrupoMateria.first.aula
+                  : null;
+              final horarios = detalle.aulaGrupoMateria.isNotEmpty
+                  ? detalle.aulaGrupoMateria.first.horario
+                  : <dynamic>[];
 
               return Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: GrupoMateriaCard(
-                  grupoMateria: oferta.grupoMateria,
-                  isSelected: isSelected,
+                  isSelected: selectedOfertaGrupoMateriaIds.contains(oferta.id),
                   onSelectionChanged: (selected) {
                     setState(() {
                       if (selected) {
-                        selectedGrupoMateriaIds.add(grupoMateriaId);
+                        selectedOfertaGrupoMateriaIds.add(oferta.id);
                       } else {
-                        selectedGrupoMateriaIds.remove(grupoMateriaId);
+                        selectedOfertaGrupoMateriaIds.remove(oferta.id);
                       }
                     });
-
-                    // Debug: mostrar las materias seleccionadas
-                    print('📝 Materias seleccionadas: $selectedMateriaIds');
                   },
+                  materiaNombre: materia.nombre,
+                  materiaSigla: materia.sigla,
+                  docenteNombre: '${docente.nombre} ${docente.apellidoPaterno}',
+                  aulaNumero: aula != null ? aula.numero.toString() : '-',
+                  horario: horarios.isNotEmpty
+                      ? horarios
+                            .map(
+                              (h) =>
+                                  '${h.diaSemana} ${h.horaInicio}-${h.horaFin}',
+                            )
+                            .join(', ')
+                      : '-',
+                  grupo: detalle.grupo,
+                  cupos: detalle.cupos,
+                  inscritos: detalle.inscritos,
                 ),
               );
             },

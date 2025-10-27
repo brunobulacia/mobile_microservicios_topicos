@@ -1,22 +1,21 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../main.dart';
-import '../../../../data/services/idempotency_manager.dart';
 import '../../../../data/services/inscripcion_polling_service.dart';
-import '../../../../domain/models/inscripcion.dart';
+import '../../../../domain/models/job_status.dart';
 import '../../../routes/routes.dart';
 
 class ProcesoInscripcion extends StatefulWidget {
-  const ProcesoInscripcion({super.key, required this.inscripcion});
-  final Inscripcion inscripcion;
+  const ProcesoInscripcion({super.key, required this.jobId});
+  final String jobId;
 
   @override
-  State<ProcesoInscripcion> createState() => _ProcesoInscripcionState();
+  _ProcesoInscripcionState createState() => _ProcesoInscripcionState();
 }
 
 class _ProcesoInscripcionState extends State<ProcesoInscripcion> {
   InscripcionPollingService? _pollingService;
-  String? _currentJobId;
+  JobStatus? _jobStatus;
   String _statusMessage = 'Iniciando inscripción...';
   bool _isInProgress = true;
   bool _hasError = false;
@@ -26,137 +25,88 @@ class _ProcesoInscripcionState extends State<ProcesoInscripcion> {
   @override
   void initState() {
     super.initState();
-    print('🏗️ ProcesoInscripcion initState iniciado');
-    print('📋 Inscripción recibida: ${widget.inscripcion.toJson()}');
-
-    // Ejecutar el procesamiento en el siguiente frame para asegurar que el widget esté construido
+    print('ProcesoInscripcion initState iniciado');
+    print('Job ID recibido: ${widget.jobId}');
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _procesarInscripcion();
+      _iniciarPolling();
     });
   }
 
   @override
   void dispose() {
-    _pollingService?.dispose();
+    _pollingService?.stopAllPolling();
     super.dispose();
   }
 
-  Future<void> _procesarInscripcion() async {
-    print('🚀 Iniciando proceso de inscripción...');
-    print('📋 Inscripción: ${widget.inscripcion.toJson()}');
-
-    try {
-      final injector = Injector.of(context);
-      final inscripcionRepository = injector.inscripcionRepository;
-
-      print('✅ Injector y repository obtenidos correctamente');
-
-      setState(() {
-        _statusMessage = 'Enviando solicitud de inscripción...';
-        _progress = 0.1;
-      });
-
-      print('📤 Enviando inscripción al backend...');
-
-      // Enviar inscripción al backend
-      final jobResponse = await inscripcionRepository.inscribirMaterias(
-        widget.inscripcion,
-      );
-
-      print('✅ Job response recibido: ${jobResponse.jobId}');
-
-      // Registrar la request activa
-      IdempotencyManager.registerActiveRequest(
-        widget.inscripcion.requestId,
-        jobResponse.jobId,
-      );
-
-      setState(() {
-        _currentJobId = jobResponse.jobId;
-        _statusMessage = 'Procesando inscripción...';
-        _progress = 0.3;
-      });
-
-      print('🔄 Iniciando servicio de polling para job: ${jobResponse.jobId}');
-
-      // Inicializar servicio de polling
-      _pollingService = InscripcionPollingService(inscripcionRepository);
-
-      // Iniciar polling
-      _pollingService!
-          .startPolling(jobResponse.jobId)
-          .listen(
-            (jobStatus) {
-              print(
-                '📊 Estado del job: ${jobStatus.status} - Progress: ${jobStatus.progress}',
-              );
-
-              setState(() {
-                _statusMessage = _getStatusMessage(jobStatus.status);
-                _progress = _calculateProgress(jobStatus.status);
-              });
-
-              if (jobStatus.isCompleted) {
-                print('✅ Job completado exitosamente');
-                _handleInscripcionCompleted(jobStatus);
-              } else if (jobStatus.isFailed) {
-                print('❌ Job falló: ${jobStatus.error}');
-                _handleInscripcionFailed(jobStatus);
-              }
-            },
-            onError: (error) {
-              print('❌ Error en polling: $error');
-              IdempotencyManager.completeRequest(widget.inscripcion.requestId);
-              _handlePollingError(error);
-            },
-          );
-    } catch (e, stackTrace) {
-      print('❌ Error al enviar inscripción: $e');
-      print('📍 Stack trace: $stackTrace');
-      _handlePollingError(e);
-    }
+  void _iniciarPolling() {
+    final injector = Injector.of(context);
+    final inscripcionRepository = injector.inscripcionRepository;
+    _pollingService = InscripcionPollingService(inscripcionRepository);
+    setState(() {
+      _statusMessage = 'Consultando estado de inscripción...';
+      _progress = 0.1;
+    });
+    _pollingService!
+        .startPolling(widget.jobId)
+        .listen(
+          (jobStatus) {
+            print(
+              'Estado del job: ${jobStatus.status} - Progress: ${jobStatus.progress}',
+            );
+            setState(() {
+              _jobStatus = jobStatus;
+              _statusMessage = _getStatusMessage(jobStatus.status);
+              _progress = _calculateProgress(jobStatus.status);
+            });
+            if (jobStatus.status == Status.completed) {
+              _handleInscripcionCompleted(jobStatus);
+            } else if (jobStatus.status == Status.failed) {
+              _handleInscripcionFailed(jobStatus);
+            }
+          },
+          onError: (error) {
+            print('Error en polling: $error');
+            _handlePollingError(error);
+          },
+        );
   }
 
-  double _calculateProgress(String status) {
-    switch (status.toLowerCase()) {
-      case 'pending':
-      case 'iniciado':
+  double _calculateProgress(Status status) {
+    switch (status) {
+      case Status.waiting:
+      case Status.active:
+      case Status.delayed:
         return 0.3;
-      case 'processing':
-      case 'procesando':
-        return 0.6;
-      case 'completed':
-      case 'completado':
-        return 1.0;
-      case 'failed':
-      case 'fallido':
-        return 0.0;
-      default:
+      case Status.paused:
         return 0.5;
+      case Status.completed:
+        return 1.0;
+      case Status.failed:
+        return 0.0;
     }
   }
 
-  String _getStatusMessage(String status) {
-    switch (status.toLowerCase()) {
-      case 'pending':
-        return 'Inscripción en cola de procesamiento...';
-      case 'waiting':
+  String _getStatusMessage(Status status) {
+    switch (status) {
+      case Status.waiting:
         return 'Esperando turno de procesamiento...';
-      case 'processing':
+      case Status.active:
         return 'Procesando inscripción...';
-      case 'completed':
-        return '✅ ¡Inscripción completada exitosamente!';
-      case 'failed':
-        return '❌ Error en el procesamiento';
-      default:
-        return 'Procesando...';
+      case Status.delayed:
+        return 'Inscripción en espera (delayed)...';
+      case Status.paused:
+        return 'Inscripción pausada.';
+      case Status.completed:
+        return 'Inscripción completada exitosamente';
+      case Status.failed:
+        return 'Error en el procesamiento';
     }
   }
 
-  void _handleInscripcionCompleted(jobStatus) {
+  void _handleInscripcionCompleted(JobStatus jobStatus) {
     setState(() {
       _isInProgress = false;
-      _statusMessage = '✅ ¡Inscripción completada exitosamente!';
+      _statusMessage = 'Inscripción completada exitosamente';
       _progress = 1.0;
     });
 
@@ -168,23 +118,23 @@ class _ProcesoInscripcionState extends State<ProcesoInscripcion> {
     });
   }
 
-  void _handleInscripcionFailed(jobStatus) {
+  void _handleInscripcionFailed(JobStatus jobStatus) {
     setState(() {
       _isInProgress = false;
       _hasError = true;
-      _errorMessage = jobStatus.error ?? 'Error desconocido';
-      _statusMessage = '❌ Error en la inscripción';
+      _errorMessage = 'Error en la inscripción';
+      _statusMessage = 'Error en la inscripción';
       _progress = 0.0;
     });
   }
 
   void _handlePollingError(dynamic error) {
-    print('🔥 Manejando error de polling: $error');
+    print('Manejando error de polling: $error');
     setState(() {
       _isInProgress = false;
       _hasError = true;
       _errorMessage = error.toString();
-      _statusMessage = '❌ Error de conexión';
+      _statusMessage = 'Error de conexión';
       _progress = 0.0;
     });
 
@@ -203,7 +153,7 @@ class _ProcesoInscripcionState extends State<ProcesoInscripcion> {
   @override
   Widget build(BuildContext context) {
     print(
-      '🎨 Building ProcesoInscripcion widget - Status: $_statusMessage, Progress: $_progress, HasError: $_hasError',
+      'Building ProcesoInscripcion widget - Status: $_statusMessage, Progress: $_progress, HasError: $_hasError',
     );
 
     return WillPopScope(
@@ -213,7 +163,7 @@ class _ProcesoInscripcionState extends State<ProcesoInscripcion> {
           final shouldPop = await showDialog<bool>(
             context: context,
             builder: (context) => AlertDialog(
-              title: const Text('⚠️ Inscripción en progreso'),
+              title: const Text('Inscripción en progreso'),
               content: const Text(
                 'Tu inscripción está siendo procesada. ¿Estás seguro de que quieres salir?',
               ),
@@ -274,19 +224,6 @@ class _ProcesoInscripcionState extends State<ProcesoInscripcion> {
 
               const SizedBox(height: 32),
 
-              // Job ID
-              /* if (_currentJobId != null) ...[
-                Text(
-                  'Job ID: ${_currentJobId!.substring(0, 8)}...',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                    fontFamily: 'monospace',
-                  ),
-                ),
-                const SizedBox(height: 16),
-              ], */
-
               // Mensaje de estado
               Text(
                 _statusMessage,
@@ -300,31 +237,40 @@ class _ProcesoInscripcionState extends State<ProcesoInscripcion> {
               const SizedBox(height: 24),
 
               // Información de la inscripción
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Detalles de Inscripción',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey[700],
+              if (_jobStatus != null) ...[
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Detalles de Inscripción',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey[700],
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      _buildDetailRow('Registro:', widget.inscripcion.registro),
-                      const SizedBox(height: 8),
-                      _buildDetailRow(
-                        'Materias:',
-                        '${widget.inscripcion.materiasId.length} seleccionadas',
-                      ),
-                    ],
+                        const SizedBox(height: 12),
+                        _buildDetailRow('Registro:', _jobStatus!.data.registro),
+                        const SizedBox(height: 8),
+                        _buildDetailRow(
+                          'Ofertas:',
+                          _jobStatus!.data.ofertaId.join(', '),
+                        ),
+                        const SizedBox(height: 8),
+                        _buildDetailRow('Estado:', _statusMessage),
+                        const SizedBox(height: 8),
+                        _buildDetailRow(
+                          'Progreso:',
+                          '${_jobStatus!.progress}%',
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
+              ],
 
               const SizedBox(height: 32),
 
@@ -382,7 +328,7 @@ class _ProcesoInscripcionState extends State<ProcesoInscripcion> {
                           _statusMessage = 'Reintentando...';
                           _progress = 0.0;
                         });
-                        _procesarInscripcion();
+                        _iniciarPolling();
                       },
                       icon: const Icon(Icons.refresh),
                       label: const Text('Reintentar'),

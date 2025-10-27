@@ -1,57 +1,125 @@
 class JobStatus {
   JobStatus({
     required this.jobId,
-    required this.status,
-    required this.progress,
     required this.queueName,
+    required this.status,
+    required this.data,
+    required this.progress,
     required this.createdAt,
-    required this.processedAt,
-    required this.completedAt,
-    required this.result,
-    required this.error,
+    this.processedOn,
+    this.finishedOn,
+    this.returnValue,
+    required this.attemptsMade,
+    required this.opts,
   });
 
   factory JobStatus.fromJson(Map<String, dynamic> json) {
     return JobStatus(
-      jobId: json['jobId'] ?? '',
-      status: json['status'] ?? 'pending',
-      progress: json['progress'] ?? 0,
-      queueName: json['queueName'] ?? '',
-      createdAt: json['createdAt'] ?? '',
-      processedAt: json['processedAt'] ?? '',
-      completedAt: json['completedAt'] ?? '',
-      result: json['result'],
-      error: json['error'] ?? '',
+      jobId: json['jobId'] as String,
+      queueName: json['queueName'] as String,
+      status: StatusExtension.fromString(json['status'] as String),
+      data: JobData.fromJson(json['data'] as Map<String, dynamic>),
+      progress: json['progress'] as int,
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      processedOn: json['processedOn'] != null
+          ? DateTime.tryParse(json['processedOn'])
+          : null,
+      finishedOn: json['finishedOn'] != null
+          ? DateTime.tryParse(json['finishedOn'])
+          : null,
+      returnValue: json['returnValue'],
+      attemptsMade: json['attemptsMade'] as int,
+      opts: JobOpts.fromJson(json['opts'] as Map<String, dynamic>),
     );
   }
-
   final String jobId;
-  final String status; // pending, waiting, completed, failed
-  final int progress;
   final String queueName;
-  final String createdAt;
-  final String processedAt;
-  final String completedAt;
-  final dynamic result;
-  final String? error;
-
-  bool get isPending => status == 'pending';
-  bool get isWaiting => status == 'waiting';
-  bool get isCompleted => status == 'completed';
-  bool get isFailed => status == 'failed';
-  bool get isProcessing => status == 'processing';
+  final Status status;
+  final JobData data;
+  final int progress;
+  final DateTime createdAt;
+  final DateTime? processedOn;
+  final DateTime? finishedOn;
+  final dynamic returnValue;
+  final int attemptsMade;
+  final JobOpts opts;
 
   Map<String, dynamic> toJson() {
     return {
       'jobId': jobId,
-      'status': status,
-      'progress': progress,
       'queueName': queueName,
-      'createdAt': createdAt,
-      'processedAt': processedAt,
-      'completedAt': completedAt,
-      'result': result,
-      'error': error,
+      'status': status,
+      'data': data.toJson(),
+      'progress': progress,
+      'createdAt': createdAt.toIso8601String(),
+      'processedOn': processedOn?.toIso8601String(),
+      'finishedOn': finishedOn?.toIso8601String(),
+      'returnValue': returnValue,
+      'attemptsMade': attemptsMade,
+      'opts': opts.toJson(),
     };
+  }
+}
+
+class JobData {
+  JobData({required this.registro, required this.ofertaId});
+
+  factory JobData.fromJson(Map<String, dynamic> json) {
+    return JobData(
+      registro: json['registro'] as String,
+      ofertaId: List<String>.from(json['ofertaId'] as List),
+    );
+  }
+  final String registro;
+  final List<String> ofertaId;
+
+  Map<String, dynamic> toJson() {
+    return {'registro': registro, 'ofertaId': ofertaId};
+  }
+}
+
+class JobOpts {
+  JobOpts({required this.attempts, required this.delay});
+
+  factory JobOpts.fromJson(Map<String, dynamic> json) {
+    return JobOpts(
+      attempts: json['attempts'] as int,
+      delay: json['delay'] as int,
+    );
+  }
+  final int attempts;
+  final int delay;
+
+  Map<String, dynamic> toJson() {
+    return {'attempts': attempts, 'delay': delay};
+  }
+}
+
+enum Status { completed, waiting, active, delayed, failed, paused }
+
+extension StatusExtension on Status {
+  static Status fromString(String value) {
+    switch (value) {
+      case 'completed':
+        return Status.completed;
+      case 'waiting':
+        return Status.waiting;
+      case 'active':
+        return Status.active;
+      case 'delayed':
+        return Status.delayed;
+      case 'failed':
+        return Status.failed;
+      case 'paused':
+        return Status.paused;
+      default:
+        throw ArgumentError('Unknown status: $value');
+    }
+  }
+}
+
+extension StatusJson on Status {
+  String toJson() {
+    return toString().split('.').last;
   }
 }

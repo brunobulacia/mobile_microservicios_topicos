@@ -30,7 +30,7 @@ class UserProfileWidget extends StatelessWidget {
                     '${user.nombre} ${user.apellidoPaterno} ${user.apellidoMaterno}',
                   ),
                   _buildInfoRow('Email', user.email),
-                  _buildInfoRow('Matrícula', user.matricula),
+                  _buildInfoRow('Registro', user.registro),
                   _buildInfoRow('CI', user.ci),
                   _buildInfoRow('Teléfono', user.telefono),
                   _buildInfoRow('PPAC', user.ppac.toString()),
