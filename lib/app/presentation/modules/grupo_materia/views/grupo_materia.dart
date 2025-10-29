@@ -6,6 +6,7 @@ import '../../../../domain/models/inscripcion.dart';
 import '../../../../domain/models/oferta_grupo_materia.dart';
 import '../../../blocs/auth/auth_bloc.dart';
 import '../../../blocs/auth/auth_state.dart';
+import '../../../global/widgets/bottom_navbar.dart';
 import '../../../global/widgets/grupo_materia_card.dart';
 import '../../../routes/routes.dart';
 
@@ -209,7 +210,7 @@ class _GrupoMateriaViewState extends State<GrupoMateriaView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      bottomNavigationBar: BottomNavigationBar(
+      /* bottomNavigationBar: BottomNavigationBar(
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.book), label: 'Materias'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Perfil'),
@@ -224,7 +225,8 @@ class _GrupoMateriaViewState extends State<GrupoMateriaView> {
             Navigator.pushNamed(context, Routes.boletaInscripcion);
           }
         },
-      ),
+      ), */
+      bottomNavigationBar: BottomNavbar(),
       appBar: AppBar(
         title: const Text('Maestro de Oferta'),
         backgroundColor: Colors.blue,

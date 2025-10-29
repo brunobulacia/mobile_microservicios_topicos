@@ -5,16 +5,19 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'app/data/repositories_implementation/authentication_repository_impl.dart';
+import 'app/data/repositories_implementation/avance_academico_repository_impl.dart';
 import 'app/data/repositories_implementation/boleta_inscripcion_repository_impl.dart';
 import 'app/data/repositories_implementation/connectivity_repository_impl.dart';
 import 'app/data/repositories_implementation/inscripcion_repository_impl.dart';
 import 'app/data/repositories_implementation/oferta_grupo_materia_repository_impl.dart';
 import 'app/data/services/remote/authentication_api.dart';
+import 'app/data/services/remote/avance_academico_api.dart';
 import 'app/data/services/remote/boleta_inscripcion_api.dart';
 import 'app/data/services/remote/inscripcion_api.dart';
 import 'app/data/services/remote/internet_checker.dart';
 import 'app/data/services/remote/oferta_grupo_materia_api.dart';
 import 'app/domain/repositories/authentication_repository.dart';
+import 'app/domain/repositories/avance_academico_repository.dart';
 import 'app/domain/repositories/boleta_inscripcion_repository.dart';
 import 'app/domain/repositories/connectivity_repository.dart';
 import 'app/domain/repositories/inscripcion_repository.dart';
@@ -42,6 +45,9 @@ void main() {
       boletaInscripcionRepository: BoletaInscripcionRepositoryImpl(
         BoletaInscripcionApi(Dio()),
       ),
+      avanceAcademicoRepository: AvanceAcademicoRepositoryImpl(
+        AvanceAcademicoApi(Dio()),
+      ),
       child: BlocProvider(
         create: (context) => AuthBloc(authRepository),
         child: const MyApp(),
@@ -59,6 +65,7 @@ class Injector extends InheritedWidget {
     required this.ofertaGrupoMateriaRepository,
     required this.inscripcionRepository,
     required this.boletaInscripcionRepository,
+    required this.avanceAcademicoRepository,
   });
 
   final ConnectivityRepository connectivityRepository;
@@ -66,6 +73,7 @@ class Injector extends InheritedWidget {
   final OfertaGrupoMateriaRepository ofertaGrupoMateriaRepository;
   final InscripcionRepository inscripcionRepository;
   final BoletaInscripcionRepository boletaInscripcionRepository;
+  final AvanceAcademicoRepository avanceAcademicoRepository;
 
   @override
   bool updateShouldNotify(_) => false;

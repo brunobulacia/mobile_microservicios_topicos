@@ -8,4 +8,5 @@ class Routes {
   static const boletaInscripcion = '/boleta-inscripcion';
   static const procesoInscripcion = '/proceso-inscripcion';
   static const inscripcionIniciada = '/inscripcion-iniciada';
+  static const avanceAcademico = '/avance-academico';
 }

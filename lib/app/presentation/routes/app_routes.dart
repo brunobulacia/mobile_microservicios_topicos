@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../domain/models/job_response.dart';
+import '../modules/avance_academico/views/avance_academico_view.dart';
 import '../modules/boleta_inscripcion/views/boleta_inscripcion.dart';
 import '../modules/grupo_materia/views/grupo_materia.dart';
 import '../modules/home/views/home_view.dart';
@@ -19,6 +20,7 @@ Map<String, Widget Function(BuildContext)> get appRoutes {
     Routes.offline: (context) => const OfflineView(),
     Routes.grupoMateria: (context) => const GrupoMateriaView(),
     Routes.boletaInscripcion: (context) => const BoletaInscripcionView(),
+    Routes.avanceAcademico: (context) => const AvanceAcademicoView(),
     Routes.inscripcionIniciada: (context) {
       final jobResponse =
           ModalRoute.of(context)!.settings.arguments as JobResponse;
